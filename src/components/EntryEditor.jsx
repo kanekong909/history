@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { newId } from '../db.js'
 import EntryPreview from './EntryPreview.jsx'
 import BlockEditor, { BLOCK_TYPES, ImagePicker } from './BlockEditor.jsx'
+import CoverOptions from './CoverOptions.jsx'
 
 const makeBlock = (type) => ({
   id: newId(), type, text: '', html: '', caption: '', image: null,
@@ -77,6 +78,7 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
 
       <label>Imagen de portada</label>
       <ImagePicker blob={draft.cover} onChange={(cover) => set({ cover })} label="Elegir portada" />
+      {draft.cover && <CoverOptions value={draft.coverStyle} onChange={(coverStyle) => set({ coverStyle })} />}
       </div>
 
       <h3 className="section-title">Contenido</h3>

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useObjectURL } from '../useObjectURL.js'
 import FavButton from './FavButton.jsx'
 import { blockText } from '../richText.js'
+import { coverOf } from '../imageStyles.js'
 
 function firstImage(entry) {
   return entry.cover || entry.blocks?.find((b) => b.type === 'image' && b.image)?.image
@@ -18,7 +19,7 @@ function Card({ entry, featured, isFav, favCount, onToggleFav, onOpen }) {
   return (
     <article className={`card ${featured ? 'featured' : ''}`} onClick={onOpen}>
       <div className="card-media">
-        {img ? <img src={img} alt="" /> : <div className="card-placeholder">📝</div>}
+        {img ? <img src={img} alt="" style={entry.cover ? { objectPosition: coverOf(entry).position } : undefined} /> : <div className="card-placeholder">📝</div>}
         <FavButton active={isFav} count={favCount} onToggle={onToggleFav} />
       </div>
       <div className="card-body">

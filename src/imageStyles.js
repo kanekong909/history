@@ -37,9 +37,13 @@ const DIRECTION = { top: 'to bottom', bottom: 'to top', left: 'to right', right:
 
 // Degradado: la imagen se vuelve transparente hacia los lados elegidos y se funde con el fondo de la página.
 export function fadeStyle(block) {
-  const sides = block.fade || []
-  if (!sides.length || !styleInfo(block).fade) return undefined
-  const pct = (FADE_SIZES.find((f) => f.value === block.fadeSize) || FADE_SIZES[1]).pct
+  if (!styleInfo(block).fade) return undefined
+  return fadeMask(block.fade, block.fadeSize)
+}
+
+export function fadeMask(sides = [], sizeKey) {
+  if (!sides.length) return undefined
+  const pct = (FADE_SIZES.find((f) => f.value === sizeKey) || FADE_SIZES[1]).pct
   const layers = sides.map((s) => `linear-gradient(${DIRECTION[s]}, transparent 0%, #000 ${pct}%)`).join(', ')
   return {
     WebkitMaskImage: layers,
@@ -48,3 +52,31 @@ export function fadeStyle(block) {
     maskComposite: 'intersect',
   }
 }
+
+// ---------- Portada ----------
+export const COVER_LAYOUTS = [
+  { value: 'classic', label: 'Clásica: título arriba, imagen abajo' },
+  { value: 'first', label: 'Imagen arriba, título abajo' },
+  { value: 'full', label: 'Todo el ancho' },
+  { value: 'hero', label: 'Título sobre la imagen' },
+  { value: 'split', label: 'Imagen y título lado a lado' },
+]
+
+export const COVER_HEIGHTS = [
+  { value: 'auto', label: 'Natural' },
+  { value: 'short', label: 'Baja' },
+  { value: 'medium', label: 'Media' },
+  { value: 'tall', label: 'Alta' },
+]
+
+export const COVER_POSITIONS = [
+  { value: 'center', label: 'Centro' },
+  { value: 'top', label: 'Parte de arriba' },
+  { value: 'bottom', label: 'Parte de abajo' },
+  { value: 'left', label: 'Parte izquierda' },
+  { value: 'right', label: 'Parte derecha' },
+]
+
+export const DEFAULT_COVER = { layout: 'classic', height: 'auto', position: 'center', fade: [], fadeSize: 'medium' }
+
+export const coverOf = (entry) => ({ ...DEFAULT_COVER, ...(entry?.coverStyle || {}) })

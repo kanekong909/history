@@ -7,9 +7,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { forwardRef, useState } from 'react'
-import { useObjectURL } from '../useObjectURL.js'
 import Block from './EntryBlocks.jsx'
 import BlockEditor from './BlockEditor.jsx'
+import EntryHeader from './EntryHeader.jsx'
 
 const LABELS = { text: 'Texto', image: 'Imagen', quote: 'Cita', heading: 'Subtítulo' }
 
@@ -68,7 +68,6 @@ function SortableItem({ editing, onChange, onDone, ...props }) {
 }
 
 export default function EntryPreview({ draft, onReorder, onChangeBlock, onRemoveBlock }) {
-  const cover = useObjectURL(draft.cover)
   const [activeId, setActiveId] = useState(null)
   const [editingId, setEditingId] = useState(null)
 
@@ -99,12 +98,7 @@ export default function EntryPreview({ draft, onReorder, onChangeBlock, onRemove
         (en el celular, mantén el dedo pulsado un instante). Pulsa ✎ para editar un bloque aquí mismo.
       </p>
 
-      <header className="entry-header">
-        {draft.category && <p className="kicker">{draft.category}</p>}
-        <h1>{draft.title || 'Sin título'}</h1>
-        {draft.date && <p className="byline"><span>{draft.date}</span></p>}
-      </header>
-      {cover && <img className="cover" src={cover} alt="" />}
+      <EntryHeader entry={draft} />
 
       {blocks.length === 0 ? (
         <div className="empty"><p>Todavía no hay contenido. Vuelve a “Editar” para añadir bloques.</p></div>

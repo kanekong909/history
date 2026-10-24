@@ -21,6 +21,7 @@ const fromRow = (r) => ({
   date: r.date,
   tags: r.tags || [],
   cover: r.cover,
+  coverStyle: r.cover_style || null,
   blocks: r.blocks || [],
   createdAt: new Date(r.created_at).getTime(),
   updatedAt: new Date(r.updated_at).getTime(),
@@ -103,6 +104,7 @@ export async function saveEntry(entry, previous) {
     blocks: withUrls.blocks,
     updated_at: new Date().toISOString(),
   }
+  if (withUrls.coverStyle || previous?.coverStyle) row.cover_style = withUrls.coverStyle || null
   if (withUrls.createdAt) row.created_at = new Date(withUrls.createdAt).toISOString()
   check(await supabase.from('entries').upsert(row))
 

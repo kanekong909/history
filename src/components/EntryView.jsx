@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { useObjectURL } from '../useObjectURL.js'
 import { blockText } from '../richText.js'
 import FavButton from './FavButton.jsx'
 import Block from './EntryBlocks.jsx'
+import EntryHeader from './EntryHeader.jsx'
 
 const readingMinutes = (entry) => {
   const words = (entry.blocks || []).map(blockText).join(' ').split(/\s+/).filter(Boolean).length
@@ -10,7 +10,6 @@ const readingMinutes = (entry) => {
 }
 
 export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav, onBack, onEdit, onDelete }) {
-  const cover = useObjectURL(entry.cover)
   const minutes = useMemo(() => readingMinutes(entry), [entry])
 
   return (
@@ -28,16 +27,7 @@ export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav
         </div>
       </div>
 
-      <header className="entry-header">
-        {entry.category && <p className="kicker">{entry.category}</p>}
-        <h1>{entry.title || 'Sin título'}</h1>
-        <p className="byline">
-          {entry.date && <span>{entry.date}</span>}
-          <span>{minutes} min de lectura</span>
-        </p>
-      </header>
-
-      {cover && <img className="cover" src={cover} alt="" />}
+      <EntryHeader entry={entry} minutes={minutes} />
 
       <div className="content">
         {entry.blocks?.map((b) => <Block key={b.id} block={b} />)}

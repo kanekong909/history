@@ -35,6 +35,11 @@ update public.profiles set is_admin = true
 where id = (select id from auth.users where email = 'su@correo.com');
 ```
 
+### Estilo de la portada (opcional, una sola vez)
+
+Para poder elegir el diseño de la portada de cada entrada, ejecuta [`supabase/03_estilo_portada.sql`](supabase/03_estilo_portada.sql) en el **SQL Editor**.
+Solo agrega una columna y no toca tus datos. Hazlo **antes** de publicar la versión que usa esta opción.
+
 ## 3. Conectar la app
 
 1. En Supabase, abre **Project Settings → API** (o el botón **Connect**) y copia:
@@ -79,6 +84,7 @@ where id = (select id from auth.users where email = 'su@correo.com');
 ```
 supabase/schema.sql      tabla de entradas, bucket de imágenes
 supabase/02_usuarios_favoritos.sql   perfiles, rol admin, favoritos
+supabase/03_estilo_portada.sql       columna con el diseño de la portada
 src/supabase.js          cliente de Supabase (lee el .env)
 src/db.js                leer/guardar/borrar entradas, subir imágenes, exportar/importar
 src/localDb.js           lee las entradas antiguas del navegador para migrarlas

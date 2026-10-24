@@ -55,6 +55,7 @@ function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
 export default function Navbar({ user, profile, isAdmin, onHome, onNew, onLogin, onLogout, onExport, onImport }) {
   return (
     <header className="topbar">
+      <div className="topbar-inner">
       <a className="brand" href="/" onClick={(e) => { e.preventDefault(); onHome() }} aria-label="Ir al inicio">
         <Logo />
         <span className="brand-text">
@@ -72,6 +73,7 @@ export default function Navbar({ user, profile, isAdmin, onHome, onNew, onLogin,
         {!user && <button type="button" onClick={onLogin}>Iniciar sesión</button>}
         <UserMenu user={user} profile={profile} isAdmin={isAdmin} onExport={onExport} onImport={onImport} onLogout={onLogout} />
       </nav>
+      </div>
     </header>
   )
 }

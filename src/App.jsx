@@ -162,7 +162,7 @@ function Archive() {
     })
 
   return (
-    <div className="app">
+    <>
       <Navbar
         user={user}
         profile={profile}
@@ -174,6 +174,7 @@ function Archive() {
         onExport={handleExport}
         onImport={() => importRef.current.click()}
       />
+      <div className="app">
       <input ref={importRef} type="file" accept="application/json" hidden onChange={handleImport} />
 
       {localCount > 0 && (
@@ -223,6 +224,7 @@ function Archive() {
 
       {showLogin && <Login onClose={() => setShowLogin(false)} />}
       {busyMsg && <div className="toast">{busyMsg}</div>}
-    </div>
+      </div>
+    </>
   )
 }
