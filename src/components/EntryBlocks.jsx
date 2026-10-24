@@ -12,19 +12,19 @@ function ImageBlock({ block }) {
     <figure className={`figure-${block.size || 'normal'} style-${styleInfo(block).value}`}>
       <img
         src={url} alt={block.caption || ''} loading="lazy" style={fadeStyle(block)}
-        className={lb ? 'zoomable' : undefined} onClick={() => lb?.open(url)}
+        className={lb ? 'zoomable' : undefined} onClick={(e) => lb?.open(url, e.currentTarget)}
       />
       {block.caption && <figcaption>{block.caption}</figcaption>}
     </figure>
   )
 }
 
-function Slide({ slide }) {
+function Slide({ slide, active }) {
   const url = useObjectURL(slide.image)
   const lb = useLightbox()
   return (
-    <figure className="carousel-slide">
-      {url && <img src={url} alt={slide.caption || ''} loading="lazy" draggable={false} className={lb ? 'zoomable' : undefined} onClick={() => lb?.open(url)} />}
+    <figure className={`carousel-slide ${active ? 'active' : ''}`}>
+      {url && <img src={url} alt={slide.caption || ''} loading="lazy" draggable={false} className={lb ? 'zoomable' : undefined} onClick={(e) => lb?.open(url, e.currentTarget)} />}
       {slide.caption && <figcaption>{slide.caption}</figcaption>}
     </figure>
   )
@@ -55,7 +55,7 @@ function Carousel({ block }) {
       tabIndex={0} onKeyDown={onKey}
     >
       <div className="carousel-track" ref={track} onScroll={onScroll}>
-        {slides.map((s) => <Slide key={s.id} slide={s} />)}
+        {slides.map((s, n) => <Slide key={s.id} slide={s} active={n === i} />)}
       </div>
       {slides.length > 1 && (
         <>

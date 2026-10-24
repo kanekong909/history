@@ -27,7 +27,7 @@ export default function EntryHeader({ entry, minutes }) {
       className={`cover-img ${lb ? 'zoomable' : ''}`}
       src={url}
       alt=""
-      onClick={() => lb?.open(url)}
+      onClick={(e) => lb?.open(url, e.currentTarget)}
       style={{ objectPosition: cs.position, ...fadeMask(cs.fade, cs.fadeSize) }}
     />
   )

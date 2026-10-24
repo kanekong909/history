@@ -18,7 +18,7 @@ const ItemView = forwardRef(function ItemView({ block, index, count, onEdit, onR
   const wide = (block.type === 'image' || block.type === 'carousel') && block.size === 'wide'
   const { className = '', ...props } = rest
   return (
-    <div ref={ref} className={`preview-item ${wide ? 'wide' : ''} ${overlay ? 'overlay' : ''} ${className}`} {...props}>
+    <div ref={ref} data-block-id={block.id} className={`preview-item ${wide ? 'wide' : ''} ${overlay ? 'overlay' : ''} ${className}`} {...props}>
       <div className="preview-tools">
         <span className="grip" title="Arrastra para mover">⠿ {LABELS[block.type]}</span>
         {!overlay && (
@@ -42,7 +42,7 @@ function SortableItem({ editing, onChange, onDone, ...props }) {
   // Editando en el sitio: el bloque se convierte en su editor y no se puede arrastrar hasta pulsar «Listo».
   if (editing) {
     return (
-      <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="preview-item editing">
+      <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} data-block-id={props.block.id} className="preview-item editing">
         <BlockEditor
           block={props.block}
           onChange={onChange}

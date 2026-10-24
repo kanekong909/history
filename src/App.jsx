@@ -29,6 +29,12 @@ export default function App() {
   return <Archive />
 }
 
+const entryPath = (id) => `/historia/${encodeURIComponent(id)}`
+const viewFromPath = () => {
+  const m = location.pathname.match(/^\/historia\/([^/]+)/)
+  return m ? { mode: 'view', id: decodeURIComponent(m[1]) } : { mode: 'list' }
+}
+
 function Archive() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -41,7 +47,13 @@ function Archive() {
   const [localCount, setLocalCount] = useState(0)
   const [busyMsg, setBusyMsg] = useState('')
   // view: { mode: 'list' } | { mode: 'view', id } | { mode: 'edit', id? }
-  const [view, setView] = useState({ mode: 'list' })
+  // La entrada abierta va en la dirección (/historia/<id>) para poder compartirla y volver con «atrás».
+  const [view, setViewState] = useState(viewFromPath)
+  const setView = (v) => {
+    setViewState(v)
+    const path = v.mode === 'view' ? entryPath(v.id) : v.mode === 'list' ? '/' : null
+    if (path && location.pathname !== path) history.pushState(null, '', path)
+  }
   const importRef = useRef(null)
 
   const user = session?.user
@@ -58,6 +70,12 @@ function Archive() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const onPop = () => setViewState(viewFromPath())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   useEffect(() => {
     reload()
@@ -103,6 +121,12 @@ function Archive() {
   }
 
   const current = entries.find((e) => e.id === view.id)
+
+  // Cada pantalla empieza arriba, y la pestaña lleva el título de la historia.
+  useEffect(() => { window.scrollTo(0, 0) }, [view.mode, view.id])
+  useEffect(() => {
+    document.title = view.mode === 'view' && current?.title ? `${current.title} · Mi Archivo` : 'Mi Archivo'
+  }, [view.mode, current?.title])
 
   const run = async (msg, fn) => {
     setBusyMsg(msg)
@@ -197,6 +221,17 @@ function Archive() {
             onToggleFav={toggleFav}
             onOpen={(id) => setView({ mode: 'view', id })}
           />
+        )}
+        {view.mode === 'view' && !current && (
+          loading
+            ? <div className="empty"><p>Cargando…</p></div>
+            : (
+              <div className="empty">
+                <h2>No encontramos esta historia</h2>
+                <p>Puede que se haya eliminado o que el enlace esté incompleto.</p>
+                <button onClick={() => setView({ mode: 'list' })}>Ir al inicio</button>
+              </div>
+            )
         )}
         {view.mode === 'view' && current && (
           <EntryView

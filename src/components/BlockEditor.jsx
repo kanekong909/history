@@ -90,7 +90,7 @@ function CarouselEditor({ block, set }) {
 export default function BlockEditor({ block, onChange, onRemove, onMove, isFirst, isLast, onDone }) {
   const set = (patch) => onChange({ ...block, ...patch })
   return (
-    <div id={`block-${block.id}`} className={`block-editor block-${block.type}`}>
+    <div id={`block-${block.id}`} data-block-id={block.id} className={`block-editor block-${block.type}`}>
       <div className="block-head">
         <span>{BLOCK_TYPES.find((t) => t.type === block.type)?.label}</span>
         {block.type === 'text' && (

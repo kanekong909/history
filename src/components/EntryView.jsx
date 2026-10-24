@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { blockText } from '../richText.js'
 import FavButton from './FavButton.jsx'
 import Block from './EntryBlocks.jsx'
@@ -13,12 +13,37 @@ const readingMinutes = (entry) => {
 export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav, onBack, onEdit, onDelete }) {
   const minutes = useMemo(() => readingMinutes(entry), [entry])
   const photos = useMemo(() => collectImages(entry), [entry])
+  const [copied, setCopied] = useState(false)
+
+  // En el celular abre el menú de compartir; en el computador copia el enlace.
+  const share = async () => {
+    const url = `${location.origin}/historia/${encodeURIComponent(entry.id)}`
+    if (navigator.share && matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ title: entry.title || 'Mi Archivo', url })
+        return
+      } catch (e) {
+        if (e.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+    } catch {
+      window.prompt('Copia este enlace:', url)
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2200)
+  }
 
   return (
     <article className="entry-view">
       <div className="toolbar">
         <button className="ghost" onClick={onBack}>← Volver</button>
         <div className="actions">
+          <button type="button" className={`ghost share-btn ${copied ? 'copied' : ''}`} onClick={share} aria-live="polite">
+            {copied ? '✓ Enlace copiado' : 'Compartir'}
+          </button>
           <FavButton active={isFav} count={favCount} onToggle={onToggleFav} />
           {canEdit && (
             <>
