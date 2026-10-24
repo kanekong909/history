@@ -10,8 +10,8 @@
   --text-soft: #4a443d;
   --muted: #847a6f;
   --border: #e5ded3;
-  --accent: #9a4a1c;
-  --accent-soft: #f4e7dc;
+  --accent: #7b1e3a;
+  --accent-soft: #f7e6ea;
   --highlight: #fbe8a6;
   --danger: #b3261e;
   --shadow: 0 1px 2px rgba(40, 30, 20, .04), 0 8px 24px rgba(40, 30, 20, .06);
@@ -38,8 +38,8 @@
     --text-soft: #d3cbc1;
     --muted: #9d9388;
     --border: #36312b;
-    --accent: #e09a62;
-    --accent-soft: #3a2a1d;
+    --accent: #c44a66;
+    --accent-soft: #3a1a24;
     --highlight: #5b4a14;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .25);
     --shadow-hover: 0 2px 4px rgba(0, 0, 0, .35), 0 16px 40px rgba(0, 0, 0, .35);
@@ -56,13 +56,43 @@ img { max-width: 100%; }
 /* ---------- Barra superior ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 5;
-  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
-  padding: 16px 0; margin-bottom: 32px;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 12px 0; margin-bottom: 32px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.topbar h1 { margin: 0; font: 600 1.5rem/1 var(--font-display); letter-spacing: -.01em; cursor: pointer; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); min-width: 0; }
+.logo { flex: none; border-radius: 10px; transition: transform .2s ease; }
+.brand:hover .logo { transform: rotate(-6deg) scale(1.05); }
+.brand-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.brand-name { font: 600 1.35rem/1.1 var(--font-display); letter-spacing: -.01em; }
+.brand-tag { font-size: .72rem; color: var(--muted); letter-spacing: .04em; }
+.nav-actions { display: flex; align-items: center; gap: 10px; }
+.new-btn { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Menú de usuario */
+.menu { position: relative; }
+.avatar {
+  width: 38px; height: 38px; padding: 0; border-radius: 50%; display: grid; place-items: center;
+  font: 600 1rem var(--font-display); background: var(--accent-soft); color: var(--accent); border: 1px solid transparent;
+}
+.avatar:hover:not(:disabled) { border-color: var(--accent); opacity: 1; }
+.avatar.plain { background: transparent; color: var(--text-soft); border-color: var(--border); font-size: 1.05rem; }
+.menu-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); min-width: 230px; z-index: 10;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 6px;
+  box-shadow: var(--shadow-hover); display: flex; flex-direction: column;
+}
+.menu-user { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.menu-user strong { font-weight: 600; font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-user span { font-size: .78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-panel button {
+  background: transparent; color: var(--text); border: none; border-radius: 8px;
+  text-align: left; padding: 9px 12px; font-size: .9rem;
+}
+.menu-panel button:hover { background: var(--surface-2); opacity: 1; }
+.menu-panel button.out { color: var(--danger); }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* ---------- Botones y campos ---------- */
@@ -328,6 +358,10 @@ code { font-size: .85em; background: var(--surface-2); padding: 1px 6px; border-
 @media (max-width: 600px) {
   .app { padding: 0 16px 64px; }
   .topbar { margin-bottom: 20px; }
+  .brand-tag { display: none; }
+  .brand-name { font-size: 1.2rem; }
+  .new-label { display: none; }
+  .new-btn { padding: 8px 14px; font-size: 1.1rem; }
   .editor-bar { top: 0; position: static; }
   .prose { font-size: 1.1rem; }
 }

@@ -9,6 +9,7 @@ import EntryList from './components/EntryList.jsx'
 import EntryEditor from './components/EntryEditor.jsx'
 import EntryView from './components/EntryView.jsx'
 import Login from './components/Login.jsx'
+import Navbar from './components/Navbar.jsx'
 
 function NotConfigured() {
   return (
@@ -162,27 +163,18 @@ function Archive() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <h1 onClick={() => setView({ mode: 'list' })}>📚 Mi Archivo</h1>
-        <div className="actions">
-          <button className="ghost" onClick={handleExport}>Exportar</button>
-          {user ? (
-            <>
-              {isAdmin && (
-                <>
-                  <button className="ghost" onClick={() => importRef.current.click()}>Importar</button>
-                  <input ref={importRef} type="file" accept="application/json" hidden onChange={handleImport} />
-                </>
-              )}
-              <span className="user" title={user.email}>👤 {profile?.display_name || user.email}</span>
-              <button className="ghost" onClick={() => supabase.auth.signOut()}>Salir</button>
-              {isAdmin && <button onClick={() => setView({ mode: 'edit' })}>+ Nueva entrada</button>}
-            </>
-          ) : (
-            <button onClick={() => setShowLogin(true)}>Iniciar sesión</button>
-          )}
-        </div>
-      </header>
+      <Navbar
+        user={user}
+        profile={profile}
+        isAdmin={isAdmin}
+        onHome={() => setView({ mode: 'list' })}
+        onNew={() => setView({ mode: 'edit' })}
+        onLogin={() => setShowLogin(true)}
+        onLogout={() => supabase.auth.signOut()}
+        onExport={handleExport}
+        onImport={() => importRef.current.click()}
+      />
+      <input ref={importRef} type="file" accept="application/json" hidden onChange={handleImport} />
 
       {localCount > 0 && (
         <div className="banner">
