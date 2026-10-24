@@ -45,6 +45,12 @@ function BlockEditor({ block, onChange, onRemove, onMove, isFirst, isLast }) {
     <div id={`block-${block.id}`} className={`block-editor block-${block.type}`}>
       <div className="block-head">
         <span>{BLOCK_TYPES.find((t) => t.type === block.type)?.label}</span>
+        {block.type === 'text' && (
+          <label className="dropcap-toggle" title="Agranda la primera letra del bloque">
+            <input type="checkbox" checked={Boolean(block.dropCap)} onChange={(e) => set({ dropCap: e.target.checked })} />
+            Letra capital
+          </label>
+        )}
         <div>
           <button type="button" className="ghost small" disabled={isFirst} onClick={() => onMove(-1)}>↑</button>
           <button type="button" className="ghost small" disabled={isLast} onClick={() => onMove(1)}>↓</button>

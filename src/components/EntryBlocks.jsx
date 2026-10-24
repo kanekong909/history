@@ -28,7 +28,7 @@ export default function Block({ block }) {
       return <ImageBlock block={block} />
     default:
       return block.html
-        ? <div className="prose" dangerouslySetInnerHTML={{ __html: sanitize(block.html) }} />
-        : <div className="prose"><p className="text">{block.text}</p></div>
+        ? <div className={`prose ${block.dropCap ? 'dropcap' : ''}`} dangerouslySetInnerHTML={{ __html: sanitize(block.html) }} />
+        : <div className={`prose ${block.dropCap ? 'dropcap' : ''}`}><p className="text">{block.text}</p></div>
   }
 }
