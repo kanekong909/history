@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { newId } from '../db.js'
 import { useObjectURL } from '../useObjectURL.js'
 import { textToHtml } from '../richText.js'
 import RichTextEditor from './RichTextEditor.jsx'
+import EntryPreview from './EntryPreview.jsx'
 
 // `hidden`: tipos antiguos que se siguen mostrando pero ya no se ofrecen
 // (los títulos ahora se ponen dentro del texto).
@@ -41,7 +42,7 @@ function ImagePicker({ blob, onChange, label = 'Elegir imagen' }) {
 function BlockEditor({ block, onChange, onRemove, onMove, isFirst, isLast }) {
   const set = (patch) => onChange({ ...block, ...patch })
   return (
-    <div className={`block-editor block-${block.type}`}>
+    <div id={`block-${block.id}`} className={`block-editor block-${block.type}`}>
       <div className="block-head">
         <span>{BLOCK_TYPES.find((t) => t.type === block.type)?.label}</span>
         <div>
@@ -88,6 +89,15 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
     blocks: [makeBlock('text')],
   })
   const [tagInput, setTagInput] = useState((entry?.tags || []).join(', '))
+  const [tab, setTab] = useState('edit') // 'edit' | 'preview'
+  const [focusId, setFocusId] = useState(null)
+
+  // Al volver a «Editar» desde un bloque de la vista previa, llevar la pantalla hasta ese bloque.
+  useEffect(() => {
+    if (tab !== 'edit' || !focusId) return
+    document.getElementById(`block-${focusId}`)?.scrollIntoView({ block: 'center' })
+    setFocusId(null)
+  }, [tab, focusId])
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
   const setBlocks = (fn) => setDraft((d) => ({ ...d, blocks: fn(d.blocks) }))
@@ -108,10 +118,22 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
     <form className="editor" onSubmit={submit}>
       <div className="toolbar editor-bar">
         <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
-        <span className="editor-bar-title">{entry ? 'Editando entrada' : 'Nueva entrada'}</span>
+        <div className="tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'edit'} className={tab === 'edit' ? 'active' : ''} onClick={() => setTab('edit')}>Editar</button>
+          <button type="button" role="tab" aria-selected={tab === 'preview'} className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')}>Vista previa</button>
+        </div>
         <button type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
       </div>
 
+      {tab === 'preview' ? (
+        <EntryPreview
+          draft={draft}
+          onReorder={(blocks) => set({ blocks })}
+          onRemoveBlock={(id) => setBlocks((bs) => bs.filter((x) => x.id !== id))}
+          onEditBlock={(id) => { setFocusId(id); setTab('edit') }}
+        />
+      ) : (
+        <>
       <input className="title-input" placeholder="Título de la entrada" value={draft.title} onChange={(e) => set({ title: e.target.value })} autoFocus />
 
       <div className="panel">
@@ -160,6 +182,8 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
           </button>
         ))}
       </div>
+        </>
+      )}
     </form>
   )
 }
