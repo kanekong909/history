@@ -80,3 +80,11 @@ export const COVER_POSITIONS = [
 export const DEFAULT_COVER = { layout: 'classic', height: 'auto', position: 'center', fade: [], fadeSize: 'medium' }
 
 export const coverOf = (entry) => ({ ...DEFAULT_COVER, ...(entry?.coverStyle || {}) })
+
+// ---------- Carrusel ----------
+export const CAROUSEL_RATIOS = [
+  { value: '16/9', label: 'Panorámica 16:9' },
+  { value: '4/3', label: 'Clásica 4:3' },
+  { value: '1/1', label: 'Cuadrada' },
+  { value: 'auto', label: 'Proporción original' },
+]

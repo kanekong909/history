@@ -73,7 +73,7 @@ const pathFromUrl = (url) =>
   typeof url === 'string' && url.includes(PUBLIC_MARK) ? decodeURIComponent(url.split(PUBLIC_MARK)[1]) : null
 
 const imageUrls = (entry) =>
-  [entry?.cover, ...(entry?.blocks || []).map((b) => b.image)].filter((x) => typeof x === 'string')
+  [entry?.cover, ...(entry?.blocks || []).flatMap((b) => [b.image, ...(b.slides || []).map((s) => s.image)])].filter((x) => typeof x === 'string')
 
 async function removeImages(urls) {
   const paths = urls.map(pathFromUrl).filter(Boolean)
@@ -84,7 +84,13 @@ async function mapImages(entry, fn) {
   const out = { ...entry }
   if (entry.cover) out.cover = await fn(entry.cover)
   out.blocks = await Promise.all(
-    (entry.blocks || []).map(async (b) => (b.type === 'image' && b.image ? { ...b, image: await fn(b.image) } : b))
+    (entry.blocks || []).map(async (b) => {
+      if (b.type === 'image' && b.image) return { ...b, image: await fn(b.image) }
+      if (b.type === 'carousel') {
+        return { ...b, slides: await Promise.all((b.slides || []).map(async (s) => (s.image ? { ...s, image: await fn(s.image) } : s))) }
+      }
+      return b
+    })
   )
   return out
 }

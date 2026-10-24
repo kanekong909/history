@@ -7,6 +7,7 @@ import CoverOptions from './CoverOptions.jsx'
 const makeBlock = (type) => ({
   id: newId(), type, text: '', html: '', caption: '', image: null,
   ...(type === 'image' && { size: 'normal' }),
+  ...(type === 'carousel' && { slides: [], size: 'normal', ratio: '16/9' }),
 })
 
 export default function EntryEditor({ entry, categories, saving, onSave, onCancel }) {

@@ -3,6 +3,7 @@ import { blockText } from '../richText.js'
 import FavButton from './FavButton.jsx'
 import Block from './EntryBlocks.jsx'
 import EntryHeader from './EntryHeader.jsx'
+import { LightboxProvider, collectImages } from './Lightbox.jsx'
 
 const readingMinutes = (entry) => {
   const words = (entry.blocks || []).map(blockText).join(' ').split(/\s+/).filter(Boolean).length
@@ -11,6 +12,7 @@ const readingMinutes = (entry) => {
 
 export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav, onBack, onEdit, onDelete }) {
   const minutes = useMemo(() => readingMinutes(entry), [entry])
+  const photos = useMemo(() => collectImages(entry), [entry])
 
   return (
     <article className="entry-view">
@@ -27,11 +29,13 @@ export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav
         </div>
       </div>
 
-      <EntryHeader entry={entry} minutes={minutes} />
+      <LightboxProvider items={photos}>
+        <EntryHeader entry={entry} minutes={minutes} />
 
-      <div className="content">
-        {entry.blocks?.map((b) => <Block key={b.id} block={b} />)}
-      </div>
+        <div className="content">
+          {entry.blocks?.map((b) => <Block key={b.id} block={b} />)}
+        </div>
+      </LightboxProvider>
 
       <footer className="entry-footer">
         {entry.tags?.length > 0 && (

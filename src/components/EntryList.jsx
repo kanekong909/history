@@ -5,7 +5,9 @@ import { blockText } from '../richText.js'
 import { coverOf } from '../imageStyles.js'
 
 function firstImage(entry) {
-  return entry.cover || entry.blocks?.find((b) => b.type === 'image' && b.image)?.image
+  return entry.cover
+    || entry.blocks?.find((b) => b.type === 'image' && b.image)?.image
+    || entry.blocks?.find((b) => b.type === 'carousel' && b.slides?.[0]?.image)?.slides[0].image
 }
 
 function excerpt(entry) {

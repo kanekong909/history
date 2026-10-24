@@ -1,11 +1,13 @@
 import { useObjectURL } from '../useObjectURL.js'
 import { coverOf, fadeMask } from '../imageStyles.js'
+import { useLightbox } from './Lightbox.jsx'
 
 // Cabecera de la entrada: categoría, título, fecha y portada, según el diseño elegido.
 // La usan la lectura y la vista previa del editor.
 export default function EntryHeader({ entry, minutes }) {
   const url = useObjectURL(entry.cover)
   const cs = coverOf(entry)
+  const lb = useLightbox()
 
   const text = (
     <header className="entry-header">
@@ -22,9 +24,10 @@ export default function EntryHeader({ entry, minutes }) {
 
   const img = (
     <img
-      className="cover-img"
+      className={`cover-img ${lb ? 'zoomable' : ''}`}
       src={url}
       alt=""
+      onClick={() => lb?.open(url)}
       style={{ objectPosition: cs.position, ...fadeMask(cs.fade, cs.fadeSize) }}
     />
   )

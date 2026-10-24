@@ -11,11 +11,11 @@ import Block from './EntryBlocks.jsx'
 import BlockEditor from './BlockEditor.jsx'
 import EntryHeader from './EntryHeader.jsx'
 
-const LABELS = { text: 'Texto', image: 'Imagen', quote: 'Cita', heading: 'Subtítulo' }
+const LABELS = { text: 'Texto', image: 'Imagen', carousel: 'Carrusel', quote: 'Cita', heading: 'Subtítulo' }
 
 // Parte visual del bloque (también se usa en la copia que sigue al dedo/ratón al arrastrar).
 const ItemView = forwardRef(function ItemView({ block, index, count, onEdit, onRemove, onMove, overlay, ...rest }, ref) {
-  const wide = block.type === 'image' && block.size === 'wide'
+  const wide = (block.type === 'image' || block.type === 'carousel') && block.size === 'wide'
   const { className = '', ...props } = rest
   return (
     <div ref={ref} className={`preview-item ${wide ? 'wide' : ''} ${overlay ? 'overlay' : ''} ${className}`} {...props}>
