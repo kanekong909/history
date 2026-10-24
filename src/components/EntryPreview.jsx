@@ -9,6 +9,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { forwardRef, useState } from 'react'
 import { useObjectURL } from '../useObjectURL.js'
 import Block from './EntryBlocks.jsx'
+import BlockEditor from './BlockEditor.jsx'
 
 const LABELS = { text: 'Texto', image: 'Imagen', quote: 'Cita', heading: 'Subtítulo' }
 
@@ -25,7 +26,7 @@ const ItemView = forwardRef(function ItemView({ block, index, count, onEdit, onR
           <span className="preview-buttons" onPointerDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
             <button type="button" className="ghost small" disabled={index === 0} onClick={() => onMove(-1)} title="Subir">↑</button>
             <button type="button" className="ghost small" disabled={index === count - 1} onClick={() => onMove(1)} title="Bajar">↓</button>
-            <button type="button" className="ghost small" onClick={onEdit} title="Editar este bloque">✎</button>
+            <button type="button" className="ghost small" onClick={onEdit} title="Editar aquí mismo">✎</button>
             <button type="button" className="ghost small" onClick={onRemove} title="Eliminar">✕</button>
           </span>
         )}
@@ -35,8 +36,25 @@ const ItemView = forwardRef(function ItemView({ block, index, count, onEdit, onR
   )
 })
 
-function SortableItem(props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.block.id })
+function SortableItem({ editing, onChange, onDone, ...props }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.block.id, disabled: editing })
+
+  // Editando en el sitio: el bloque se convierte en su editor y no se puede arrastrar hasta pulsar «Listo».
+  if (editing) {
+    return (
+      <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className="preview-item editing">
+        <BlockEditor
+          block={props.block}
+          onChange={onChange}
+          onRemove={props.onRemove}
+          onMove={props.onMove}
+          isFirst={props.index === 0}
+          isLast={props.index === props.count - 1}
+          onDone={onDone}
+        />
+      </div>
+    )
+  }
   return (
     <ItemView
       {...props}
@@ -49,9 +67,10 @@ function SortableItem(props) {
   )
 }
 
-export default function EntryPreview({ draft, onReorder, onEditBlock, onRemoveBlock }) {
+export default function EntryPreview({ draft, onReorder, onChangeBlock, onRemoveBlock }) {
   const cover = useObjectURL(draft.cover)
   const [activeId, setActiveId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
 
   // Ratón: arrastrar tras mover 6px. Táctil: mantener pulsado 200 ms (así se puede seguir haciendo scroll).
   const sensors = useSensors(
@@ -77,7 +96,7 @@ export default function EntryPreview({ draft, onReorder, onEditBlock, onRemoveBl
     <div className="entry-view preview">
       <p className="hint preview-hint">
         Así verá el lector tu historia. <b>Arrastra</b> cualquier bloque para cambiarlo de lugar
-        (en el celular, mantén el dedo pulsado un instante). Usa ✎ para editar su contenido.
+        (en el celular, mantén el dedo pulsado un instante). Pulsa ✎ para editar un bloque aquí mismo.
       </p>
 
       <header className="entry-header">
@@ -106,7 +125,10 @@ export default function EntryPreview({ draft, onReorder, onEditBlock, onRemoveBl
                   index={i}
                   count={blocks.length}
                   onMove={(dir) => move(i, dir)}
-                  onEdit={() => onEditBlock(b.id)}
+                  editing={editingId === b.id}
+                  onEdit={() => setEditingId(editingId === b.id ? null : b.id)}
+                  onDone={() => setEditingId(null)}
+                  onChange={onChangeBlock}
                   onRemove={() => onRemoveBlock(b.id)}
                 />
               ))}

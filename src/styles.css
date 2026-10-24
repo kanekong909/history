@@ -439,3 +439,8 @@ html, body { overflow-x: clip; } /* "Todo el ancho" usa 100vw */
   .content > figure.style-float-right { margin-left: 1em; margin-right: 0; }
   .content figure.style-polaroid { transform: none; }
 }
+
+/* ---------- Edición dentro de la vista previa ---------- */
+.preview-item.editing { cursor: default; border: 1.5px solid var(--accent); background: var(--surface); padding: 8px; border-radius: var(--radius); margin: 14px auto; box-shadow: var(--shadow); }
+.preview-item.editing .block-editor { box-shadow: none; padding: 4px 6px 8px; border: none; margin: 0; background: transparent; }
+.done-btn { padding: 3px 12px; }
