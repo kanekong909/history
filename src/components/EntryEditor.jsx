@@ -1,15 +1,28 @@
 import { useState } from 'react'
 import { newId } from '../db.js'
 import { useObjectURL } from '../useObjectURL.js'
+import { textToHtml } from '../richText.js'
+import RichTextEditor from './RichTextEditor.jsx'
 
+// `hidden`: tipos antiguos que se siguen mostrando pero ya no se ofrecen
+// (los títulos ahora se ponen dentro del texto).
 const BLOCK_TYPES = [
   { type: 'text', label: 'Texto' },
-  { type: 'heading', label: 'Subtítulo' },
   { type: 'image', label: 'Imagen' },
-  { type: 'quote', label: 'Cita' },
+  { type: 'quote', label: 'Cita destacada' },
+  { type: 'heading', label: 'Subtítulo', hidden: true },
 ]
 
-const makeBlock = (type) => ({ id: newId(), type, text: '', caption: '', image: null })
+const IMAGE_SIZES = [
+  { value: 'normal', label: 'Normal' },
+  { value: 'wide', label: 'Ancha' },
+  { value: 'small', label: 'Pequeña' },
+]
+
+const makeBlock = (type) => ({
+  id: newId(), type, text: '', html: '', caption: '', image: null,
+  ...(type === 'image' && { size: 'normal' }),
+})
 
 function ImagePicker({ blob, onChange, label = 'Elegir imagen' }) {
   const url = useObjectURL(blob)
@@ -40,16 +53,24 @@ function BlockEditor({ block, onChange, onRemove, onMove, isFirst, isLast }) {
       {block.type === 'image' ? (
         <>
           <ImagePicker blob={block.image} onChange={(image) => set({ image })} />
-          <input placeholder="Pie de foto (opcional)" value={block.caption} onChange={(e) => set({ caption: e.target.value })} />
+          <div className="image-options">
+            <input placeholder="Pie de foto (opcional)" value={block.caption} onChange={(e) => set({ caption: e.target.value })} />
+            <select value={block.size || 'normal'} onChange={(e) => set({ size: e.target.value })} title="Tamaño">
+              {IMAGE_SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
         </>
       ) : block.type === 'heading' ? (
         <input placeholder="Subtítulo" value={block.text} onChange={(e) => set({ text: e.target.value })} />
+      ) : block.type === 'quote' ? (
+        <>
+          <textarea className="quote-input" rows={2} placeholder="Una frase que quieras destacar…" value={block.text} onChange={(e) => set({ text: e.target.value })} />
+          <input placeholder="Autor o fuente (opcional)" value={block.caption || ''} onChange={(e) => set({ caption: e.target.value })} />
+        </>
       ) : (
-        <textarea
-          rows={block.type === 'quote' ? 2 : 6}
-          placeholder={block.type === 'quote' ? 'Cita…' : 'Escribe aquí…'}
-          value={block.text}
-          onChange={(e) => set({ text: e.target.value })}
+        <RichTextEditor
+          value={block.html || textToHtml(block.text)}
+          onChange={(html) => set({ html, text: '' })}
         />
       )}
     </div>
@@ -85,13 +106,15 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
 
   return (
     <form className="editor" onSubmit={submit}>
-      <div className="toolbar">
+      <div className="toolbar editor-bar">
         <button type="button" className="ghost" onClick={onCancel}>Cancelar</button>
+        <span className="editor-bar-title">{entry ? 'Editando entrada' : 'Nueva entrada'}</span>
         <button type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
       </div>
 
-      <input className="title-input" placeholder="Título" value={draft.title} onChange={(e) => set({ title: e.target.value })} autoFocus />
+      <input className="title-input" placeholder="Título de la entrada" value={draft.title} onChange={(e) => set({ title: e.target.value })} autoFocus />
 
+      <div className="panel">
       <div className="row">
         <label>
           Categoría
@@ -110,8 +133,13 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
 
       <label>Imagen de portada</label>
       <ImagePicker blob={draft.cover} onChange={(cover) => set({ cover })} label="Elegir portada" />
+      </div>
 
       <h3 className="section-title">Contenido</h3>
+      <p className="hint">
+        Consejo: también puedes escribir <code>- </code> para empezar una lista, <code>1. </code> para una numerada,
+        <code>## </code> para un título, y usar Ctrl+B / Ctrl+I.
+      </p>
       {draft.blocks.map((b, i) => (
         <BlockEditor
           key={b.id}
@@ -126,7 +154,7 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
 
       <div className="add-blocks">
         <span>Añadir:</span>
-        {BLOCK_TYPES.map((t) => (
+        {BLOCK_TYPES.filter((t) => !t.hidden).map((t) => (
           <button type="button" key={t.type} className="ghost" onClick={() => setBlocks((bs) => [...bs, makeBlock(t.type)])}>
             + {t.label}
           </button>
