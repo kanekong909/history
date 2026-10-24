@@ -4,6 +4,7 @@ import { useObjectURL } from '../useObjectURL.js'
 import { textToHtml } from '../richText.js'
 import RichTextEditor from './RichTextEditor.jsx'
 import EntryPreview from './EntryPreview.jsx'
+import { IMAGE_STYLES, IMAGE_SIZES, FADE_SIDES, FADE_SIZES, styleInfo } from '../imageStyles.js'
 
 // `hidden`: tipos antiguos que se siguen mostrando pero ya no se ofrecen
 // (los títulos ahora se ponen dentro del texto).
@@ -14,11 +15,6 @@ const BLOCK_TYPES = [
   { type: 'heading', label: 'Subtítulo', hidden: true },
 ]
 
-const IMAGE_SIZES = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'wide', label: 'Ancha' },
-  { value: 'small', label: 'Pequeña' },
-]
 
 const makeBlock = (type) => ({
   id: newId(), type, text: '', html: '', caption: '', image: null,
@@ -60,12 +56,43 @@ function BlockEditor({ block, onChange, onRemove, onMove, isFirst, isLast }) {
       {block.type === 'image' ? (
         <>
           <ImagePicker blob={block.image} onChange={(image) => set({ image })} />
+          <input className="caption-input" placeholder="Pie de foto (opcional)" value={block.caption} onChange={(e) => set({ caption: e.target.value })} />
           <div className="image-options">
-            <input placeholder="Pie de foto (opcional)" value={block.caption} onChange={(e) => set({ caption: e.target.value })} />
-            <select value={block.size || 'normal'} onChange={(e) => set({ size: e.target.value })} title="Tamaño">
-              {IMAGE_SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
+            <label>Estilo
+              <select value={styleInfo(block).value} onChange={(e) => set({ style: e.target.value })}>
+                {IMAGE_STYLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </label>
+            {!styleInfo(block).float && (
+              <label>Tamaño
+                <select value={block.size || 'normal'} onChange={(e) => set({ size: e.target.value })}>
+                  {IMAGE_SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </label>
+            )}
           </div>
+          {styleInfo(block).fade && (
+            <div className="fade-options">
+              <span>Degradado</span>
+              {FADE_SIDES.map((side) => {
+                const on = (block.fade || []).includes(side.value)
+                return (
+                  <button
+                    type="button" key={side.value} aria-pressed={on}
+                    className={`chip-btn ${on ? 'active' : ''}`}
+                    onClick={() => set({ fade: on ? block.fade.filter((x) => x !== side.value) : [...(block.fade || []), side.value] })}
+                  >
+                    {side.label}
+                  </button>
+                )
+              })}
+              {(block.fade || []).length > 0 && (
+                <select value={block.fadeSize || 'medium'} onChange={(e) => set({ fadeSize: e.target.value })} title="Intensidad del degradado">
+                  {FADE_SIZES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+              )}
+            </div>
+          )}
         </>
       ) : block.type === 'heading' ? (
         <input placeholder="Subtítulo" value={block.text} onChange={(e) => set({ text: e.target.value })} />

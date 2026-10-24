@@ -1,12 +1,13 @@
 import { useObjectURL } from '../useObjectURL.js'
 import { sanitize } from '../richText.js'
+import { fadeStyle, styleInfo } from '../imageStyles.js'
 
 function ImageBlock({ block }) {
   const url = useObjectURL(block.image)
   if (!url) return <div className="image-missing">Imagen sin elegir</div>
   return (
-    <figure className={`figure-${block.size || 'normal'}`}>
-      <img src={url} alt={block.caption || ''} loading="lazy" />
+    <figure className={`figure-${block.size || 'normal'} style-${styleInfo(block).value}`}>
+      <img src={url} alt={block.caption || ''} loading="lazy" style={fadeStyle(block)} />
       {block.caption && <figcaption>{block.caption}</figcaption>}
     </figure>
   )
