@@ -14,6 +14,7 @@ export default function EntryHeader({ entry, minutes }) {
       {entry.category && <p className="kicker">{entry.category}</p>}
       <h1>{entry.title || 'Sin título'}</h1>
       <p className="byline">
+        {entry.authorName && <span>Por {entry.authorName}</span>}
         {entry.date && <span>{entry.date}</span>}
         {minutes && <span>{minutes} min de lectura</span>}
       </p>

@@ -4,15 +4,19 @@ import FavButton from './FavButton.jsx'
 import Block from './EntryBlocks.jsx'
 import EntryHeader from './EntryHeader.jsx'
 import { LightboxProvider, collectImages } from './Lightbox.jsx'
+import Comments from './Comments.jsx'
+import StatusBar from './StatusBar.jsx'
 
 const readingMinutes = (entry) => {
   const words = (entry.blocks || []).map(blockText).join(' ').split(/\s+/).filter(Boolean).length
   return Math.max(1, Math.round(words / 200))
 }
 
-export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav, onBack, onEdit, onDelete }) {
+// `canEdit`: puede editar/eliminar esta historia. `isAdmin`: modera. `review`: acciones de estado (aprobar, enviar…).
+export default function EntryView({ entry, canEdit, isAdmin, review, user, profile, onLogin, isFav, favCount, onToggleFav, onBack, onEdit, onDelete }) {
   const minutes = useMemo(() => readingMinutes(entry), [entry])
   const photos = useMemo(() => collectImages(entry), [entry])
+  const published = entry.status === 'published'
   const [copied, setCopied] = useState(false)
 
   // En el celular abre el menú de compartir; en el computador copia el enlace.
@@ -41,10 +45,14 @@ export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav
       <div className="toolbar">
         <button className="ghost" onClick={onBack}>← Volver</button>
         <div className="actions">
-          <button type="button" className={`ghost share-btn ${copied ? 'copied' : ''}`} onClick={share} aria-live="polite">
-            {copied ? '✓ Enlace copiado' : 'Compartir'}
-          </button>
-          <FavButton active={isFav} count={favCount} onToggle={onToggleFav} />
+          {published && (
+            <>
+              <button type="button" className={`ghost share-btn ${copied ? 'copied' : ''}`} onClick={share} aria-live="polite">
+                {copied ? '✓ Enlace copiado' : 'Compartir'}
+              </button>
+              <FavButton active={isFav} count={favCount} onToggle={onToggleFav} />
+            </>
+          )}
           {canEdit && (
             <>
               <button className="ghost" onClick={onEdit}>Editar</button>
@@ -53,6 +61,8 @@ export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav
           )}
         </div>
       </div>
+
+      {!published && review && <StatusBar entry={entry} isAdmin={isAdmin} onEdit={onEdit} {...review} />}
 
       <LightboxProvider items={photos}>
         <EntryHeader entry={entry} minutes={minutes} />
@@ -68,6 +78,8 @@ export default function EntryView({ entry, canEdit, isFav, favCount, onToggleFav
         )}
         <p>Última edición: {new Date(entry.updatedAt).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </footer>
+
+      {published && <Comments entryId={entry.id} user={user} profile={profile} isAdmin={isAdmin} onLogin={onLogin} />}
     </article>
   )
 }

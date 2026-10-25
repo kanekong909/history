@@ -30,7 +30,8 @@ const makeBlock = (type) => ({
   ...(type === 'carousel' && { slides: [], size: 'normal', ratio: '16/9' }),
 })
 
-export default function EntryEditor({ entry, categories, saving, onSave, onCancel }) {
+// `role`: 'admin' guarda o publica directamente; 'member' guarda borradores y envía a revisión.
+export default function EntryEditor({ entry, categories, saving, role = 'admin', onSave, onCancel }) {
   const [draft, setDraft] = useState(() => entry ?? {
     id: newId(),
     title: '',
@@ -68,10 +69,21 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
     return next
   })
 
+  const isMember = role === 'member'
+  const [rights, setRights] = useState(false)
+  const [formError, setFormError] = useState('')
+
+  // intent: 'save' (guardar), 'submit' (enviar a revisión, para quien escribe) o 'publish' (aprobar y publicar, administrador)
+  const finish = (intent) => {
+    setFormError('')
+    if (intent !== 'save' && !draft.title.trim()) return setFormError('Ponle un título a la historia antes de continuar.')
+    if (isMember && intent === 'submit' && !rights) return setFormError('Marca la casilla de confirmación para poder enviarla a revisión.')
+    const tags = tagInput.split(',').map((t) => t.trim()).filter(Boolean)
+    onSave({ ...draft, tags }, intent)
+  }
   const submit = (e) => {
     e.preventDefault()
-    const tags = tagInput.split(',').map((t) => t.trim()).filter(Boolean)
-    onSave({ ...draft, tags })
+    finish('save')
   }
 
   return (
@@ -82,8 +94,23 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
           <button type="button" role="tab" aria-selected={tab === 'edit'} className={tab === 'edit' ? 'active' : ''} onClick={() => switchTab('edit')}>Editar</button>
           <button type="button" role="tab" aria-selected={tab === 'preview'} className={tab === 'preview' ? 'active' : ''} onClick={() => switchTab('preview')}>Vista previa</button>
         </div>
-        <button type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+        <div className="editor-actions">
+          {isMember ? (
+            <>
+              <button type="button" className="ghost" disabled={saving} onClick={() => finish('save')}>Guardar borrador</button>
+              <button type="button" disabled={saving} onClick={() => finish('submit')}>{saving ? 'Enviando…' : 'Enviar a revisión'}</button>
+            </>
+          ) : (
+            <>
+              {entry?.status === 'pending' && <button type="button" className="ghost" disabled={saving} onClick={() => finish('publish')}>Aprobar y publicar</button>}
+              <button type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar'}</button>
+            </>
+          )}
+        </div>
       </div>
+      {isMember && (
+        <p className="member-note">Tu historia solo se publicará cuando el administrador la apruebe. Puedes guardarla como borrador y seguir después.</p>
+      )}
 
       {tab === 'preview' ? (
         <EntryPreview
@@ -112,6 +139,16 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
         Etiquetas (separadas por coma)
         <input placeholder="independencia, colombia" value={tagInput} onChange={(e) => setTagInput(e.target.value)} />
       </label>
+
+      {!isMember && (
+        <>
+          <label className="check">
+            <input type="checkbox" checked={Boolean(draft.featured)} onChange={(e) => set({ featured: e.target.checked })} />
+            Destacar en el banner del inicio
+          </label>
+          <p className="hint inline-hint">Necesita una imagen de portada para verse en el banner.</p>
+        </>
+      )}
 
       <label>Imagen de portada</label>
       <ImagePicker blob={draft.cover} onChange={(cover) => set({ cover })} label="Elegir portada" />
@@ -145,6 +182,16 @@ export default function EntryEditor({ entry, categories, saving, onSave, onCance
       </div>
         </>
       )}
+
+      {isMember && (
+        <div className="rights">
+          <label className="check">
+            <input type="checkbox" checked={rights} onChange={(e) => { setRights(e.target.checked); setFormError('') }} />
+            Confirmo que los textos y las imágenes son míos o tengo permiso para usarlos, y entiendo que el administrador los revisará antes de publicarlos.
+          </label>
+        </div>
+      )}
+      {formError && <p className="error form-error" role="alert">{formError}</p>}
     </form>
   )
 }

@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase, isConfigured } from './supabase.js'
 import {
   getAllEntries, saveEntry, deleteEntry, exportAll, importAll, uploadEntries,
-  getProfile, getMyFavorites, setFavorite, getFavoriteCounts,
+  getProfile, getMyFavorites, setFavorite, getFavoriteCounts, setEntryStatus, probeContributors,
 } from './db.js'
 import { getLocalEntries, clearLocalEntries } from './localDb.js'
-import EntryList from './components/EntryList.jsx'
+import Home, { EMPTY_FILTERS } from './components/Home.jsx'
 import EntryEditor from './components/EntryEditor.jsx'
 import EntryView from './components/EntryView.jsx'
 import Login from './components/Login.jsx'
 import Navbar from './components/Navbar.jsx'
+import MyStories from './components/MyStories.jsx'
+import ReviewQueue from './components/ReviewQueue.jsx'
+import { transition } from './transitions.js'
 
 function NotConfigured() {
   return (
@@ -31,6 +34,8 @@ export default function App() {
 
 const entryPath = (id) => `/historia/${encodeURIComponent(id)}`
 const viewFromPath = () => {
+  if (location.pathname === '/mis-historias') return { mode: 'mine' }
+  if (location.pathname === '/pendientes') return { mode: 'review' }
   const m = location.pathname.match(/^\/historia\/([^/]+)/)
   return m ? { mode: 'view', id: decodeURIComponent(m[1]) } : { mode: 'list' }
 }
@@ -45,14 +50,24 @@ function Archive() {
   const [counts, setCounts] = useState({})
   const [showLogin, setShowLogin] = useState(false)
   const [localCount, setLocalCount] = useState(0)
+  const [authReady, setAuthReady] = useState(false)
+  const [contributors, setContributors] = useState(false) // ¿ya se ejecutó 07_historias_de_usuarios.sql?
+  const [notice, setNotice] = useState('')
+  // Búsqueda y filtros del inicio: viven aquí para no perderse al abrir una historia y volver.
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [busyMsg, setBusyMsg] = useState('')
   // view: { mode: 'list' } | { mode: 'view', id } | { mode: 'edit', id? }
   // La entrada abierta va en la dirección (/historia/<id>) para poder compartirla y volver con «atrás».
   const [view, setViewState] = useState(viewFromPath)
-  const setView = (v) => {
-    setViewState(v)
-    const path = v.mode === 'view' ? entryPath(v.id) : v.mode === 'list' ? '/' : null
-    if (path && location.pathname !== path) history.pushState(null, '', path)
+  // `hero`: la imagen pulsada (viaja hasta la portada). `also`: algo más que cambiar en la misma transición.
+  const setView = (v, hero, also) => {
+    transition(() => {
+      setViewState(v)
+      also?.()
+      const path = { view: v.id && entryPath(v.id), list: '/', mine: '/mis-historias', review: '/pendientes' }[v.mode] ?? null
+      if (path && location.pathname !== path) history.pushState(null, '', path)
+      window.scrollTo(0, 0)
+    }, hero)
   }
   const importRef = useRef(null)
 
@@ -72,14 +87,15 @@ function Archive() {
   }
 
   useEffect(() => {
-    const onPop = () => setViewState(viewFromPath())
+    const onPop = () => transition(() => { setViewState(viewFromPath()); window.scrollTo(0, 0) })
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [])
 
   useEffect(() => {
     reload()
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    probeContributors().then(setContributors).catch(() => {})
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true) })
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
     return () => data.subscription.unsubscribe()
   }, [])
@@ -122,8 +138,16 @@ function Archive() {
 
   const current = entries.find((e) => e.id === view.id)
 
-  // Cada pantalla empieza arriba, y la pestaña lleva el título de la historia.
-  useEffect(() => { window.scrollTo(0, 0) }, [view.mode, view.id])
+  const published = entries.filter((e) => e.status === 'published') // lo que ve todo el mundo
+  const mine = user ? entries.filter((e) => e.userId === user.id) : []
+  const pending = entries.filter((e) => e.status === 'pending')
+  const canCreate = isAdmin || Boolean(user && contributors)
+  const canEditEntry = (e) => isAdmin || Boolean(user && e && e.userId === user.id && e.status !== 'published')
+  const notify = (msg) => { setNotice(msg); setTimeout(() => setNotice(''), 4200) }
+  // Al salir de una historia sin publicar se vuelve a la lista de donde se vino
+  const backFor = (e) => (e && e.status !== 'published' ? { mode: isAdmin ? 'review' : 'mine' } : { mode: 'list' })
+
+  // La pestaña lleva el título de la historia.
   useEffect(() => {
     document.title = view.mode === 'view' && current?.title ? `${current.title} · Mi Archivo` : 'Mi Archivo'
   }, [view.mode, current?.title])
@@ -139,19 +163,36 @@ function Archive() {
     }
   }
 
-  const handleSave = (entry) =>
-    run('Guardando…', async () => {
-      await saveEntry(entry, current)
+  // intent: 'save' | 'submit' (enviar a revisión) | 'publish' (el administrador aprueba y publica)
+  const handleSave = (entry, intent = 'save') =>
+    run(intent === 'submit' ? 'Enviando a revisión…' : 'Guardando…', async () => {
+      const status = isAdmin
+        ? (intent === 'publish' ? 'published' : current?.status || 'published')
+        : (intent === 'submit' ? 'pending' : 'draft')
+      await saveEntry({ ...entry, status }, current)
       await reload()
-      setView({ mode: 'view', id: entry.id })
+      if (isAdmin) return setView({ mode: 'view', id: entry.id })
+      setView({ mode: 'mine' })
+      notify(intent === 'submit' ? 'Tu historia se envió a revisión. Aquí verás el resultado.' : 'Borrador guardado.')
     })
+
+  const changeStatus = (entry, status, note, message) =>
+    run('Un momento…', async () => {
+      await setEntryStatus(entry.id, status, note)
+      await reload()
+      notify(message)
+    })
+  const approve = (entry) => changeStatus(entry, 'published', null, 'Historia publicada.')
+  const reject = (entry, note) => changeStatus(entry, 'rejected', note, 'Historia rechazada.')
+  const submitStory = (entry) => changeStatus(entry, 'pending', undefined, 'Historia enviada a revisión.')
+  const withdraw = (entry) => changeStatus(entry, 'draft', undefined, 'La historia volvió a borrador.')
 
   const handleDelete = (entry) => {
     if (!confirm('¿Eliminar esta entrada? No se puede deshacer.')) return
     run('Eliminando…', async () => {
       await deleteEntry(entry)
       await reload()
-      setView({ mode: 'list' })
+      setView(backFor(entry))
     })
   }
 
@@ -185,14 +226,28 @@ function Archive() {
       await reload()
     })
 
+  const loadingBox = <div className="empty"><p>Cargando…</p></div>
+  const needLogin = (
+    <div className="empty">
+      <h2>Inicia sesión para continuar</h2>
+      <p>Esta página es para cuentas con la sesión iniciada.</p>
+      <button onClick={() => setShowLogin(true)}>Iniciar sesión</button>
+    </div>
+  )
+
   return (
     <>
       <Navbar
         user={user}
         profile={profile}
         isAdmin={isAdmin}
-        onHome={() => setView({ mode: 'list' })}
+        canWrite={canCreate}
+        showMine={Boolean(user) && !isAdmin && contributors}
+        pendingCount={isAdmin ? pending.length : 0}
+        onHome={() => setView({ mode: 'list' }, null, () => setFilters(EMPTY_FILTERS))}
         onNew={() => setView({ mode: 'edit' })}
+        onMine={() => setView({ mode: 'mine' })}
+        onReview={() => setView({ mode: 'review' })}
         onLogin={() => setShowLogin(true)}
         onLogout={() => supabase.auth.signOut()}
         onExport={handleExport}
@@ -209,17 +264,19 @@ function Archive() {
       )}
       {error && <div className="banner error">{error}</div>}
 
-      <main>
+      <main key={`${view.mode}:${view.id || ''}`} className="view-enter">
         {view.mode === 'list' && (
           loading ? <div className="empty"><p>Cargando…</p></div> :
-          <EntryList
-            entries={entries}
-            canCreate={isAdmin}
+          <Home
+            entries={published}
+            filters={filters}
+            setFilters={setFilters}
+            isAdmin={isAdmin}
             loggedIn={Boolean(user)}
             favs={favs}
             counts={counts}
             onToggleFav={toggleFav}
-            onOpen={(id) => setView({ mode: 'view', id })}
+            onOpen={(id, hero) => setView({ mode: 'view', id }, hero)}
           />
         )}
         {view.mode === 'view' && !current && (
@@ -236,29 +293,71 @@ function Archive() {
         {view.mode === 'view' && current && (
           <EntryView
             entry={current}
-            canEdit={isAdmin}
+            canEdit={canEditEntry(current)}
+            isAdmin={isAdmin}
+            user={user}
+            profile={profile}
+            onLogin={() => setShowLogin(true)}
             isFav={favs.has(current.id)}
             favCount={counts[current.id]}
             onToggleFav={() => toggleFav(current.id)}
-            onBack={() => setView({ mode: 'list' })}
+            onBack={() => setView(backFor(current))}
             onEdit={() => setView({ mode: 'edit', id: current.id })}
             onDelete={() => handleDelete(current)}
+            review={{
+              onApprove: () => approve(current),
+              onReject: (note) => reject(current, note),
+              onSubmit: () => submitStory(current),
+              onWithdraw: () => withdraw(current),
+            }}
           />
         )}
-        {view.mode === 'edit' && isAdmin && (
+        {view.mode === 'edit' && (current ? canEditEntry(current) : canCreate) && (
           <EntryEditor
             key={view.id || 'new'}
+            role={isAdmin ? 'admin' : 'member'}
             entry={current}
             saving={Boolean(busyMsg)}
             categories={[...new Set(entries.map((e) => e.category).filter(Boolean))]}
             onSave={handleSave}
-            onCancel={() => setView(current ? { mode: 'view', id: current.id } : { mode: 'list' })}
+            onCancel={() => setView(current ? { mode: 'view', id: current.id } : { mode: isAdmin ? 'list' : 'mine' })}
           />
+        )}
+        {view.mode === 'mine' && (
+          !authReady ? loadingBox : !user ? needLogin : (
+            <MyStories
+              entries={mine}
+              busy={Boolean(busyMsg)}
+              onOpen={(id) => setView({ mode: 'view', id })}
+              onEdit={(id) => setView({ mode: 'edit', id })}
+              onSubmit={submitStory}
+              onWithdraw={withdraw}
+              onDelete={handleDelete}
+              onNew={() => setView({ mode: 'edit' })}
+            />
+          )
+        )}
+        {view.mode === 'review' && (
+          !authReady || (user && !profile) ? loadingBox : !user ? needLogin : isAdmin ? (
+            <ReviewQueue
+              entries={pending}
+              busy={Boolean(busyMsg)}
+              onOpen={(id) => setView({ mode: 'view', id })}
+              onApprove={approve}
+              onReject={reject}
+            />
+          ) : (
+            <div className="empty">
+              <h2>Esta página es solo para el administrador</h2>
+              <button onClick={() => setView({ mode: 'list' })}>Ir al inicio</button>
+            </div>
+          )
         )}
       </main>
 
       {showLogin && <Login onClose={() => setShowLogin(false)} />}
       {busyMsg && <div className="toast">{busyMsg}</div>}
+      {!busyMsg && notice && <div className="toast ok" role="status">{notice}</div>}
       </div>
     </>
   )

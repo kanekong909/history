@@ -40,6 +40,46 @@ where id = (select id from auth.users where email = 'su@correo.com');
 Para poder elegir el diseño de la portada de cada entrada, ejecuta [`supabase/03_estilo_portada.sql`](supabase/03_estilo_portada.sql) en el **SQL Editor**.
 Solo agrega una columna y no toca tus datos. Hazlo **antes** de publicar la versión que usa esta opción.
 
+### Historias destacadas (opcional, una sola vez)
+
+El inicio muestra un banner que rota entre las historias marcadas como **destacadas**. Para poder marcarlas, ejecuta
+[`supabase/04_destacadas.sql`](supabase/04_destacadas.sql) en el **SQL Editor** (solo agrega una columna).
+Si no marcas ninguna, el banner usa las más queridas que tengan portada.
+
+### Comentarios
+
+Cualquiera puede comentar en una historia, con sesión o como invitado (anónimo). Para activarlo, ejecuta
+[`supabase/05_comentarios.sql`](supabase/05_comentarios.sql) en el **SQL Editor** (después del 02). Crea la tabla, sus reglas y un freno
+contra avalanchas (máximo 20 comentarios por minuto en todo el sitio). Tú, como administrador, puedes eliminar cualquier comentario;
+quien comenta con sesión puede eliminar los suyos. Los invitados no pueden borrar los suyos.
+
+Para que quien comentó pueda **editar o eliminar** su comentario (con sesión o como invitado), ejecuta también
+[`supabase/06_editar_comentarios.sql`](supabase/06_editar_comentarios.sql). Los invitados lo logran con una clave secreta que su navegador guarda:
+si borran los datos del navegador o cambian de dispositivo, ya no podrán editar ese comentario.
+
+### Imágenes en Cloudinary
+
+Las imágenes se guardan en **Cloudinary** (las que ya estaban en Supabase siguen funcionando). Para que el navegador nunca vea tu API secret,
+las subidas pasan por dos funciones del servidor de la carpeta `api/`, que Vercel ejecuta solas:
+
+1. En tu cuenta de Cloudinary copia **Cloud name**, **API key** y **API secret** (Settings → API Keys).
+2. En **Vercel → tu proyecto → Settings → Environment Variables** crea estas tres (sin el prefijo `VITE_`) y haz **Redeploy**:
+   `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
+3. Para pruebas locales, las mismas tres van en tu `.env` (que git ignora). **Nunca** pongas el secret en un archivo que se suba a GitHub.
+
+Las funciones comprueban la sesión y el correo confirmado, dejan subir solo imágenes (jpg, png, webp, gif, avif) a la carpeta de cada persona,
+y limitan a quienes no son administradoras a 30 imágenes (`MEMBER_IMAGE_LIMIT` en Vercel lo cambia).
+
+### Historias de otras personas (con tu aprobación)
+
+Para que cualquier persona con cuenta pueda escribir historias que **tú apruebas** antes de publicarse, ejecuta
+[`supabase/07_historias_de_usuarios.sql`](supabase/07_historias_de_usuarios.sql) en el **SQL Editor** (después del 02).
+
+- Deja activado **Confirm email** (Authentication → Sign In / Providers → Email): solo cuentas con el correo confirmado pueden escribir.
+- Quien escribe guarda borradores y los envía a revisión (máximo 3 a la vez y 20 sin publicar). Tú las ves en **Pendientes de revisión** (menú de tu avatar)
+  y las apruebas o rechazas con una nota. Hasta entonces solo las ven su autora o autor y tú.
+- Nadie puede publicar por su cuenta, destacar historias ni cambiar una historia ya publicada.
+
 ## 3. Conectar la app
 
 1. En Supabase, abre **Project Settings → API** (o el botón **Connect**) y copia:
@@ -85,6 +125,10 @@ Solo agrega una columna y no toca tus datos. Hazlo **antes** de publicar la vers
 supabase/schema.sql      tabla de entradas, bucket de imágenes
 supabase/02_usuarios_favoritos.sql   perfiles, rol admin, favoritos
 supabase/03_estilo_portada.sql       columna con el diseño de la portada
+supabase/04_destacadas.sql           columna para marcar historias destacadas
+supabase/05_comentarios.sql          tabla de comentarios (con sesión o anónimos)
+supabase/06_editar_comentarios.sql   editar y borrar comentarios propios
+supabase/07_historias_de_usuarios.sql  historias de otras personas con aprobación
 src/supabase.js          cliente de Supabase (lee el .env)
 src/db.js                leer/guardar/borrar entradas, subir imágenes, exportar/importar
 src/localDb.js           lee las entradas antiguas del navegador para migrarlas

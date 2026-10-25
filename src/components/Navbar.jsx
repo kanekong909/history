@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Logo from './Logo.jsx'
 
-function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
+function UserMenu({ user, profile, isAdmin, showMine, pendingCount, onMine, onReview, onExport, onImport, onLogout }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -22,6 +22,9 @@ function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
   const name = profile?.display_name || user?.email || ''
   const run = (fn) => () => { setOpen(false); fn() }
 
+  // Sin sesión el menú quedaría vacío (ya no tiene opciones para visitantes): no se muestra.
+  if (!user) return null
+
   return (
     <div className="menu" ref={ref}>
       <button
@@ -33,6 +36,7 @@ function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
         onClick={() => setOpen((o) => !o)}
       >
         {user ? name.trim().charAt(0).toUpperCase() || '?' : '☰'}
+        {pendingCount > 0 && <span className="dot" aria-label={`${pendingCount} pendientes de revisión`} />}
       </button>
 
       {open && (
@@ -43,8 +47,18 @@ function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
               <span>{isAdmin ? 'Administrador' : user.email}</span>
             </div>
           )}
-          <button type="button" role="menuitem" onClick={run(onExport)}>Exportar respaldo</button>
-          {isAdmin && <button type="button" role="menuitem" onClick={run(onImport)}>Importar respaldo</button>}
+          {showMine && <button type="button" role="menuitem" onClick={run(onMine)}>Mis historias</button>}
+          {isAdmin && (
+            <button type="button" role="menuitem" onClick={run(onReview)}>
+              Pendientes de revisión{pendingCount > 0 && <span className="menu-badge">{pendingCount}</span>}
+            </button>
+          )}
+          {isAdmin && (
+            <>
+              <button type="button" role="menuitem" onClick={run(onExport)}>Exportar respaldo</button>
+              <button type="button" role="menuitem" onClick={run(onImport)}>Importar respaldo</button>
+            </>
+          )}
           {user && <button type="button" role="menuitem" className="out" onClick={run(onLogout)}>Cerrar sesión</button>}
         </div>
       )}
@@ -52,7 +66,7 @@ function UserMenu({ user, profile, isAdmin, onExport, onImport, onLogout }) {
   )
 }
 
-export default function Navbar({ user, profile, isAdmin, onHome, onNew, onLogin, onLogout, onExport, onImport }) {
+export default function Navbar({ user, profile, isAdmin, canWrite, showMine, pendingCount, onHome, onNew, onMine, onReview, onLogin, onLogout, onExport, onImport }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -65,13 +79,13 @@ export default function Navbar({ user, profile, isAdmin, onHome, onNew, onLogin,
       </a>
 
       <nav className="nav-actions">
-        {isAdmin && (
+        {canWrite && (
           <button type="button" className="new-btn" onClick={onNew}>
-            <span aria-hidden="true">+</span> <span className="new-label">Nueva entrada</span>
+            <span aria-hidden="true">+</span> <span className="new-label">{isAdmin ? 'Nueva entrada' : 'Escribir historia'}</span>
           </button>
         )}
         {!user && <button type="button" onClick={onLogin}>Iniciar sesión</button>}
-        <UserMenu user={user} profile={profile} isAdmin={isAdmin} onExport={onExport} onImport={onImport} onLogout={onLogout} />
+        <UserMenu user={user} profile={profile} isAdmin={isAdmin} showMine={showMine} pendingCount={pendingCount} onMine={onMine} onReview={onReview} onExport={onExport} onImport={onImport} onLogout={onLogout} />
       </nav>
       </div>
     </header>

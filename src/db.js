@@ -2,6 +2,7 @@
 // En las entradas, cada imagen es una URL pública (string). Mientras se edita,
 // una imagen nueva es un Blob/File que se sube al guardar.
 import { supabase } from './supabase.js'
+import { uploadToCloudinary, deleteFromCloudinary, isCloudinaryUrl } from './cloudinary.js'
 
 const BUCKET = 'images'
 const PUBLIC_MARK = `/storage/v1/object/public/${BUCKET}/`
@@ -22,6 +23,12 @@ const fromRow = (r) => ({
   tags: r.tags || [],
   cover: r.cover,
   coverStyle: r.cover_style || null,
+  featured: Boolean(r.featured),
+  status: r.status || 'published',
+  authorName: r.author_name || null,
+  reviewNote: r.review_note || null,
+  submittedAt: r.submitted_at || null,
+  publishedAt: r.published_at || null,
   blocks: r.blocks || [],
   createdAt: new Date(r.created_at).getTime(),
   updatedAt: new Date(r.updated_at).getTime(),
@@ -59,15 +66,57 @@ export async function getFavoriteCounts() {
   return Object.fromEntries(rows.map((r) => [r.entry_id, Number(r.total)]))
 }
 
+// ---------- Comentarios ----------
+// Las columnas se piden una a una: la huella de la clave de invitado no se puede leer desde la web.
+// Si aún no se ha ejecutado 06_editar_comentarios.sql, se usa la lista corta (sin «editado»).
+const COMMENT_COLS = 'id,entry_id,user_id,author_name,body,created_at,edited_at'
+const COMMENT_COLS_BASE = 'id,entry_id,user_id,author_name,body,created_at'
+
+const fromComment = (r) => ({
+  id: r.id, entryId: r.entry_id, userId: r.user_id, authorName: r.author_name, body: r.body,
+  createdAt: r.created_at, editedAt: r.edited_at || null,
+})
+
+export async function getComments(entryId) {
+  const query = (cols) => supabase.from('comments').select(cols).eq('entry_id', entryId).order('created_at', { ascending: true })
+  let res = await query(COMMENT_COLS)
+  if (res.error) res = await query(COMMENT_COLS_BASE)
+  return check(res).map(fromComment)
+}
+
+// Con sesión, la base de datos pone sola el usuario. Sin sesión queda como invitado y, si se pasa `token`
+// (clave secreta que guarda su navegador), podrá editar o borrar su comentario más adelante.
+export async function addComment({ entryId, name, body, token }) {
+  const row = { entry_id: entryId, author_name: name, body }
+  let res = await supabase.from('comments').insert(token ? { ...row, guest_token: token } : row).select(COMMENT_COLS).single()
+  if (res.error && token) res = await supabase.from('comments').insert(row).select(COMMENT_COLS_BASE).single()
+  return fromComment(check(res))
+}
+
+// `token`: clave del invitado. Con sesión no hace falta: la base de datos comprueba que el comentario sea tuyo.
+export async function updateComment({ id, body, token }) {
+  if (token) {
+    const ok = check(await supabase.rpc('edit_guest_comment', { p_id: id, p_token: token, p_body: body }))
+    if (!ok) throw new Error('No tienes permiso para editar este comentario')
+    return { body: body.trim(), editedAt: new Date().toISOString() }
+  }
+  const row = check(await supabase.from('comments').update({ body }).eq('id', id).select(COMMENT_COLS).single())
+  return fromComment(row)
+}
+
+export async function deleteComment({ id, token }) {
+  if (token) {
+    check(await supabase.rpc('delete_guest_comment', { p_id: id, p_token: token }))
+    return
+  }
+  check(await supabase.from('comments').delete().eq('id', id))
+}
+
 // ---------- Imágenes ----------
 
-async function uploadImage(blob) {
-  const { data: { user } } = await supabase.auth.getUser()
-  const ext = (blob.type.split('/')[1] || 'png').replace('jpeg', 'jpg').replace('svg+xml', 'svg')
-  const path = `${user.id}/${newId()}.${ext}`
-  check(await supabase.storage.from(BUCKET).upload(path, blob, { contentType: blob.type }))
-  return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl
-}
+// Las imágenes nuevas van a Cloudinary. Las que ya estaban en el almacenamiento de Supabase siguen
+// funcionando (son solo direcciones) y se borran de allí si se quitan.
+const uploadImage = (blob) => uploadToCloudinary(blob)
 
 const pathFromUrl = (url) =>
   typeof url === 'string' && url.includes(PUBLIC_MARK) ? decodeURIComponent(url.split(PUBLIC_MARK)[1]) : null
@@ -77,21 +126,30 @@ const imageUrls = (entry) =>
 
 async function removeImages(urls) {
   const paths = urls.map(pathFromUrl).filter(Boolean)
-  if (paths.length) await supabase.storage.from(BUCKET).remove(paths)
+  const cloud = urls.filter(isCloudinaryUrl)
+  // Borrar imágenes es «lo de menos»: si algo falla, la entrada ya se guardó y no se interrumpe
+  await Promise.allSettled([
+    paths.length ? supabase.storage.from(BUCKET).remove(paths) : null,
+    cloud.length ? deleteFromCloudinary(cloud) : null,
+  ])
 }
 
+// En orden (no en paralelo): así el cupo de imágenes se comprueba bien y no se satura el servicio.
 async function mapImages(entry, fn) {
   const out = { ...entry }
   if (entry.cover) out.cover = await fn(entry.cover)
-  out.blocks = await Promise.all(
-    (entry.blocks || []).map(async (b) => {
-      if (b.type === 'image' && b.image) return { ...b, image: await fn(b.image) }
-      if (b.type === 'carousel') {
-        return { ...b, slides: await Promise.all((b.slides || []).map(async (s) => (s.image ? { ...s, image: await fn(s.image) } : s))) }
-      }
-      return b
-    })
-  )
+  out.blocks = []
+  for (const b of entry.blocks || []) {
+    if (b.type === 'image' && b.image) {
+      out.blocks.push({ ...b, image: await fn(b.image) })
+    } else if (b.type === 'carousel') {
+      const slides = []
+      for (const sl of b.slides || []) slides.push(sl.image ? { ...sl, image: await fn(sl.image) } : sl)
+      out.blocks.push({ ...b, slides })
+    } else {
+      out.blocks.push(b)
+    }
+  }
   return out
 }
 
@@ -111,7 +169,12 @@ export async function saveEntry(entry, previous) {
     updated_at: new Date().toISOString(),
   }
   if (withUrls.coverStyle || previous?.coverStyle) row.cover_style = withUrls.coverStyle || null
+  // Solo se envía si hay (o había) una destacada: así no falla mientras no exista la columna en Supabase
+  if (withUrls.featured || previous?.featured) row.featured = Boolean(withUrls.featured)
   if (withUrls.createdAt) row.created_at = new Date(withUrls.createdAt).toISOString()
+  // El estado solo se envía cuando hace falta: así todo sigue funcionando mientras no exista la columna en Supabase.
+  const status = withUrls.status || 'published'
+  if (status !== 'published' || (previous?.status && previous.status !== 'published')) row.status = status
   check(await supabase.from('entries').upsert(row))
 
   const kept = new Set(imageUrls(withUrls))
@@ -122,6 +185,22 @@ export async function saveEntry(entry, previous) {
 export async function deleteEntry(entry) {
   check(await supabase.from('entries').delete().eq('id', entry.id))
   await removeImages(imageUrls(entry))
+}
+
+// ---------- Moderación y envío de historias ----------
+
+// Cambia el estado de una historia. El administrador publica o rechaza; quien la escribió solo puede
+// enviarla a revisión o volverla a borrador (la base de datos lo hace cumplir). `note` es el motivo del rechazo.
+export async function setEntryStatus(id, status, note) {
+  const patch = { status }
+  if (note !== undefined) patch.review_note = note || null
+  check(await supabase.from('entries').update(patch).eq('id', id))
+}
+
+// ¿Está activado el sistema de historias de usuarios en Supabase (07_historias_de_usuarios.sql)?
+export async function probeContributors() {
+  const { error } = await supabase.from('entries').select('status').limit(1)
+  return !error
 }
 
 // ---------- Exportar / importar (respaldo en JSON) ----------
