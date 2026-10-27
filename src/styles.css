@@ -825,9 +825,11 @@ code {
   position: sticky;
   top: 63px;
   z-index: 4;
-  padding: 10px 0;
+  padding: 10px 7px;
   background: color-mix(in srgb, var(--bg) 90%, transparent);
   backdrop-filter: blur(8px);
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .editor-bar-title {
