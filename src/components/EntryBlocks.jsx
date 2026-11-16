@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useObjectURL } from '../useObjectURL.js'
-import { sanitize } from '../richText.js'
+import RichProse from './RichProse.jsx'
+import RecordTableBlock from './RecordTableBlock.jsx'
 import { fadeStyle, styleInfo } from '../imageStyles.js'
 import { useLightbox } from './Lightbox.jsx'
 
@@ -89,9 +90,11 @@ export default function Block({ block }) {
       return <ImageBlock block={block} />
     case 'carousel':
       return <Carousel block={block} />
+    case 'table':
+      return <RecordTableBlock block={block} />
     default:
       return block.html
-        ? <div className={`prose ${block.dropCap ? 'dropcap' : ''}`} dangerouslySetInnerHTML={{ __html: sanitize(block.html) }} />
+        ? <RichProse html={block.html} dropCap={block.dropCap} />
         : <div className={`prose ${block.dropCap ? 'dropcap' : ''}`}><p className="text">{block.text}</p></div>
   }
 }

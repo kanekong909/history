@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, isConfigured } from './supabase.js'
 import {
   getAllEntries, saveEntry, deleteEntry, exportAll, importAll, uploadEntries,
@@ -12,6 +12,13 @@ import Login from './components/Login.jsx'
 import Navbar from './components/Navbar.jsx'
 import MyStories from './components/MyStories.jsx'
 import ReviewQueue from './components/ReviewQueue.jsx'
+import CollectionsIndex from './components/CollectionsIndex.jsx'
+import CollectionPage from './components/CollectionPage.jsx'
+import RecordPage from './components/RecordPage.jsx'
+import CollectionEditor from './components/CollectionEditor.jsx'
+import RecordEditor from './components/RecordEditor.jsx'
+import { KnowledgeProvider } from './knowledge.jsx'
+import { getKnowledge, saveCollection, deleteCollection, saveRecord, deleteRecord, createRecordQuick } from './knowledge.js'
 import { transition } from './transitions.js'
 
 function NotConfigured() {
@@ -34,6 +41,11 @@ export default function App() {
 
 const entryPath = (id) => `/historia/${encodeURIComponent(id)}`
 const viewFromPath = () => {
+  if (location.pathname === '/colecciones') return { mode: 'collections' }
+  const col = location.pathname.match(/^\/coleccion\/([^/]+)/)
+  if (col) return { mode: 'collection', slug: decodeURIComponent(col[1]) }
+  const rec = location.pathname.match(/^\/ficha\/([^/]+)/)
+  if (rec) return { mode: 'record', id: decodeURIComponent(rec[1]) }
   if (location.pathname === '/mis-historias') return { mode: 'mine' }
   if (location.pathname === '/pendientes') return { mode: 'review' }
   const m = location.pathname.match(/^\/historia\/([^/]+)/)
@@ -53,6 +65,8 @@ function Archive() {
   const [authReady, setAuthReady] = useState(false)
   const [contributors, setContributors] = useState(false) // ¿ya se ejecutó 07_historias_de_usuarios.sql?
   const [notice, setNotice] = useState('')
+  const [knowledge, setKnowledge] = useState(null) // { collections, records }; null = aún no activado (08_colecciones.sql)
+  const [kLoaded, setKLoaded] = useState(false)
   // Búsqueda y filtros del inicio: viven aquí para no perderse al abrir una historia y volver.
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [busyMsg, setBusyMsg] = useState('')
@@ -64,7 +78,10 @@ function Archive() {
     transition(() => {
       setViewState(v)
       also?.()
-      const path = { view: v.id && entryPath(v.id), list: '/', mine: '/mis-historias', review: '/pendientes' }[v.mode] ?? null
+      const path = {
+        view: v.id && entryPath(v.id), list: '/', mine: '/mis-historias', review: '/pendientes',
+        collections: '/colecciones', collection: v.slug && `/coleccion/${encodeURIComponent(v.slug)}`, record: v.id && `/ficha/${encodeURIComponent(v.id)}`,
+      }[v.mode] ?? null
       if (path && location.pathname !== path) history.pushState(null, '', path)
       window.scrollTo(0, 0)
     }, hero)
@@ -73,6 +90,10 @@ function Archive() {
 
   const user = session?.user
   const isAdmin = Boolean(profile?.is_admin)
+
+  const loadKnowledge = async () => {
+    try { setKnowledge(await getKnowledge()) } catch { setKnowledge(null) } finally { setKLoaded(true) }
+  }
 
   const reload = async () => {
     try {
@@ -94,6 +115,7 @@ function Archive() {
 
   useEffect(() => {
     reload()
+    loadKnowledge()
     probeContributors().then(setContributors).catch(() => {})
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setAuthReady(true) })
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
@@ -139,6 +161,24 @@ function Archive() {
   const current = entries.find((e) => e.id === view.id)
 
   const published = entries.filter((e) => e.status === 'published') // lo que ve todo el mundo
+
+  // Colecciones y fichas (para tablas, menciones con «@» y las páginas de colecciones)
+  const collections = knowledge?.collections || []
+  const records = knowledge?.records || []
+  const recordById = useMemo(() => new Map(records.map((r) => [r.id, r])), [records])
+  const collectionById = useMemo(() => new Map(collections.map((c) => [c.id, c])), [collections])
+  const collectionBySlug = (slug) => collections.find((c) => c.slug === slug)
+  const kvalue = {
+    enabled: Boolean(knowledge), loaded: kLoaded, collections, records, recordById, collectionById,
+    canCreate: isAdmin && Boolean(knowledge),
+    openRecord: (id) => setView({ mode: 'record', id }),
+    openCollection: (slug) => setView({ mode: 'collection', slug }),
+    createRecord: async ({ title, collectionId }) => {
+      const r = await createRecordQuick({ title, collectionId })
+      setKnowledge((k) => ({ ...k, records: [...k.records, r].sort((a, b) => a.title.localeCompare(b.title, 'es')) }))
+      return r
+    },
+  }
   const mine = user ? entries.filter((e) => e.userId === user.id) : []
   const pending = entries.filter((e) => e.status === 'pending')
   const canCreate = isAdmin || Boolean(user && contributors)
@@ -149,8 +189,12 @@ function Archive() {
 
   // La pestaña lleva el título de la historia.
   useEffect(() => {
-    document.title = view.mode === 'view' && current?.title ? `${current.title} · Mi Archivo` : 'Mi Archivo'
-  }, [view.mode, current?.title])
+    const t = view.mode === 'view' ? current?.title
+      : view.mode === 'record' ? recordById.get(view.id)?.title
+      : view.mode === 'collection' ? collectionBySlug(view.slug)?.name
+      : view.mode === 'collections' ? 'Colecciones' : ''
+    document.title = t ? `${t} · Mi Archivo` : 'Mi Archivo'
+  }, [view.mode, current?.title, knowledge])
 
   const run = async (msg, fn) => {
     setBusyMsg(msg)
@@ -175,6 +219,39 @@ function Archive() {
       setView({ mode: 'mine' })
       notify(intent === 'submit' ? 'Tu historia se envió a revisión. Aquí verás el resultado.' : 'Borrador guardado.')
     })
+
+  const handleSaveCollection = (col) =>
+    run('Guardando colección…', async () => {
+      const saved = await saveCollection(col, collections)
+      await loadKnowledge()
+      setView({ mode: 'collection', slug: saved.slug })
+      notify('Colección guardada.')
+    })
+  const handleDeleteCollection = (col) => {
+    if (!confirm(`¿Eliminar la colección «${col.name}» y todas sus fichas? No se puede deshacer.`)) return
+    run('Eliminando…', async () => {
+      await deleteCollection(col, records)
+      await loadKnowledge()
+      setView({ mode: 'collections' })
+      notify('Colección eliminada.')
+    })
+  }
+  const handleSaveRecord = (rec) =>
+    run('Guardando ficha…', async () => {
+      const saved = await saveRecord(rec, recordById.get(rec.id))
+      await loadKnowledge()
+      setView({ mode: 'record', id: saved.id })
+      notify('Ficha guardada.')
+    })
+  const handleDeleteRecord = (rec) => {
+    if (!confirm(`¿Eliminar la ficha «${rec.title}»? Las historias que la mencionan mostrarán su nombre sin enlace.`)) return
+    run('Eliminando…', async () => {
+      await deleteRecord(rec)
+      await loadKnowledge()
+      setView({ mode: 'collection', slug: collectionById.get(rec.collectionId)?.slug })
+      notify('Ficha eliminada.')
+    })
+  }
 
   const changeStatus = (entry, status, note, message) =>
     run('Un momento…', async () => {
@@ -227,6 +304,13 @@ function Archive() {
     })
 
   const loadingBox = <div className="empty"><p>Cargando…</p></div>
+  const notFound = (
+    <div className="empty">
+      <h2>No encontramos esta página</h2>
+      <p>Puede que se haya eliminado, que el enlace esté incompleto o que esta función aún no esté activada.</p>
+      <button onClick={() => setView({ mode: 'list' })}>Ir al inicio</button>
+    </div>
+  )
   const needLogin = (
     <div className="empty">
       <h2>Inicia sesión para continuar</h2>
@@ -236,13 +320,15 @@ function Archive() {
   )
 
   return (
-    <>
+    <KnowledgeProvider value={kvalue}>
       <Navbar
         user={user}
         profile={profile}
         isAdmin={isAdmin}
         canWrite={canCreate}
         showMine={Boolean(user) && !isAdmin && contributors}
+        showCollections={Boolean(knowledge) && (collections.length > 0 || isAdmin)}
+        onCollections={() => setView({ mode: 'collections' })}
         pendingCount={isAdmin ? pending.length : 0}
         onHome={() => setView({ mode: 'list' }, null, () => setFilters(EMPTY_FILTERS))}
         onNew={() => setView({ mode: 'edit' })}
@@ -277,6 +363,10 @@ function Archive() {
             counts={counts}
             onToggleFav={toggleFav}
             onOpen={(id, hero) => setView({ mode: 'view', id }, hero)}
+            collections={collections}
+            records={records}
+            onOpenCollection={(slug) => setView({ mode: 'collection', slug })}
+            onOpenCollections={() => setView({ mode: 'collections' })}
           />
         )}
         {view.mode === 'view' && !current && (
@@ -323,6 +413,64 @@ function Archive() {
             onCancel={() => setView(current ? { mode: 'view', id: current.id } : { mode: isAdmin ? 'list' : 'mine' })}
           />
         )}
+        {view.mode === 'collections' && (
+          !kLoaded ? loadingBox : !knowledge ? notFound : (
+            <CollectionsIndex
+              collections={collections} records={records} isAdmin={isAdmin}
+              onOpen={(slug) => setView({ mode: 'collection', slug })}
+              onNew={() => setView({ mode: 'collection-edit' })}
+            />
+          )
+        )}
+        {view.mode === 'collection' && (() => {
+          const col = collectionBySlug(view.slug)
+          return !kLoaded ? loadingBox : !col ? notFound : (
+            <CollectionPage
+              collection={col} records={records} isAdmin={isAdmin}
+              onBack={() => setView({ mode: 'collections' })}
+              onEditCollection={() => setView({ mode: 'collection-edit', slug: col.slug })}
+              onNewRecord={() => setView({ mode: 'record-edit', collectionId: col.id })}
+              onDeleteCollection={() => handleDeleteCollection(col)}
+            />
+          )
+        })()}
+        {view.mode === 'record' && (() => {
+          const rec = recordById.get(view.id)
+          const col = rec && collectionById.get(rec.collectionId)
+          return !kLoaded || (loading && !rec) ? loadingBox : !rec || !col ? notFound : (
+            <RecordPage
+              record={rec} collection={col} entries={published} isAdmin={isAdmin}
+              onBack={() => setView({ mode: 'collection', slug: col.slug })}
+              onOpenCollection={() => setView({ mode: 'collection', slug: col.slug })}
+              onOpenEntry={(id) => setView({ mode: 'view', id })}
+              onEdit={() => setView({ mode: 'record-edit', id: rec.id })}
+              onDelete={() => handleDeleteRecord(rec)}
+            />
+          )
+        })()}
+        {view.mode === 'collection-edit' && isAdmin && knowledge && (
+          <CollectionEditor
+            key={view.slug || 'nueva'}
+            collection={collectionBySlug(view.slug)}
+            collections={collections}
+            saving={Boolean(busyMsg)}
+            onSave={handleSaveCollection}
+            onCancel={() => setView(view.slug ? { mode: 'collection', slug: view.slug } : { mode: 'collections' })}
+          />
+        )}
+        {view.mode === 'record-edit' && isAdmin && knowledge && (() => {
+          const rec = recordById.get(view.id)
+          const col = collectionById.get(rec?.collectionId || view.collectionId)
+          return col && (
+            <RecordEditor
+              key={view.id || `nueva-${col.id}`}
+              record={rec} collection={col} records={records}
+              saving={Boolean(busyMsg)}
+              onSave={handleSaveRecord}
+              onCancel={() => setView(rec ? { mode: 'record', id: rec.id } : { mode: 'collection', slug: col.slug })}
+            />
+          )
+        })()}
         {view.mode === 'mine' && (
           !authReady ? loadingBox : !user ? needLogin : (
             <MyStories
@@ -359,6 +507,6 @@ function Archive() {
       {busyMsg && <div className="toast">{busyMsg}</div>}
       {!busyMsg && notice && <div className="toast ok" role="status">{notice}</div>}
       </div>
-    </>
+    </KnowledgeProvider>
   )
 }

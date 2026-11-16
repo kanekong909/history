@@ -6,6 +6,7 @@ import { blockText } from '../richText.js'
 import { collectImages } from './Lightbox.jsx'
 import { transition } from '../transitions.js'
 import { cdn } from '../cloudinary.js'
+import { CollectionTile, collectionStats } from './CollectionsIndex.jsx'
 
 export const EMPTY_FILTERS = { q: '', cat: '', onlyFavs: false, showAll: false }
 
@@ -73,7 +74,7 @@ function Section({ title, action, onAction, children }) {
   )
 }
 
-export default function Home({ entries, filters, setFilters, isAdmin, loggedIn, favs, counts, onToggleFav, onOpen }) {
+export default function Home({ entries, filters, setFilters, isAdmin, loggedIn, favs, counts, onToggleFav, onOpen, collections = [], records = [], onOpenCollection, onOpenCollections }) {
   const { q, cat, onlyFavs, showAll } = filters
   const set = (patch) => setFilters({ ...filters, ...patch }) // sin transición (al escribir en el buscador)
   // Cambios de pantalla (categoría, ver todas, etiqueta…): con transición y volviendo arriba
@@ -81,6 +82,7 @@ export default function Home({ entries, filters, setFilters, isAdmin, loggedIn, 
   const filtering = Boolean(q.trim() || cat || onlyFavs || showAll)
 
   const categories = useMemo(() => categoriesOf(entries), [entries])
+  const colStats = useMemo(() => collectionStats(collections, records), [collections, records])
   const tags = useMemo(() => tagsOf(entries), [entries])
   const results = useMemo(() => filterEntries(entries, filters, favs), [entries, filters, favs])
 
@@ -169,6 +171,16 @@ export default function Home({ entries, filters, setFilters, isAdmin, loggedIn, 
         <Section title="Explora por categoría">
           <div className="cat-grid">
             {categories.map((c) => <CategoryTile key={c.name} cat={c} onClick={() => go({ cat: c.name })} />)}
+          </div>
+        </Section>
+      )}
+
+      {colStats.length > 0 && (
+        <Section title="Colecciones" action="Ver todas" onAction={onOpenCollections}>
+          <div className="cat-grid">
+            {colStats.map(({ collection, count, cover }) => (
+              <CollectionTile key={collection.id} collection={collection} count={count} cover={cover} onClick={() => onOpenCollection(collection.slug)} />
+            ))}
           </div>
         </Section>
       )}

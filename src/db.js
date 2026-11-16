@@ -116,7 +116,7 @@ export async function deleteComment({ id, token }) {
 
 // Las imágenes nuevas van a Cloudinary. Las que ya estaban en el almacenamiento de Supabase siguen
 // funcionando (son solo direcciones) y se borran de allí si se quitan.
-const uploadImage = (blob) => uploadToCloudinary(blob)
+export const uploadImage = (blob) => uploadToCloudinary(blob)
 
 const pathFromUrl = (url) =>
   typeof url === 'string' && url.includes(PUBLIC_MARK) ? decodeURIComponent(url.split(PUBLIC_MARK)[1]) : null
@@ -124,7 +124,7 @@ const pathFromUrl = (url) =>
 const imageUrls = (entry) =>
   [entry?.cover, ...(entry?.blocks || []).flatMap((b) => [b.image, ...(b.slides || []).map((s) => s.image)])].filter((x) => typeof x === 'string')
 
-async function removeImages(urls) {
+export async function removeImages(urls) {
   const paths = urls.map(pathFromUrl).filter(Boolean)
   const cloud = urls.filter(isCloudinaryUrl)
   // Borrar imágenes es «lo de menos»: si algo falla, la entrada ya se guardó y no se interrumpe

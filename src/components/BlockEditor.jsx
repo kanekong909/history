@@ -3,6 +3,7 @@ import { textToHtml } from '../richText.js'
 import RichTextEditor from './RichTextEditor.jsx'
 import { IMAGE_STYLES, IMAGE_SIZES, FADE_SIDES, FADE_SIZES, CAROUSEL_RATIOS, styleInfo } from '../imageStyles.js'
 import { newId } from '../db.js'
+import TableBlockEditor from './TableBlockEditor.jsx'
 
 // `hidden`: tipos antiguos que se siguen mostrando pero ya no se ofrecen
 // (los títulos ahora se ponen dentro del texto).
@@ -10,6 +11,7 @@ export const BLOCK_TYPES = [
   { type: 'text', label: 'Texto' },
   { type: 'image', label: 'Imagen' },
   { type: 'carousel', label: 'Carrusel de fotos' },
+  { type: 'table', label: 'Tabla de colección', needsKnowledge: true },
   { type: 'quote', label: 'Cita destacada' },
   { type: 'heading', label: 'Subtítulo', hidden: true },
 ]
@@ -106,7 +108,9 @@ export default function BlockEditor({ block, onChange, onRemove, onMove, isFirst
           <button type="button" className="ghost small" onClick={onRemove}>✕</button>
         </div>
       </div>
-      {block.type === 'carousel' ? (
+      {block.type === 'table' ? (
+        <TableBlockEditor block={block} set={set} />
+      ) : block.type === 'carousel' ? (
         <CarouselEditor block={block} set={set} />
       ) : block.type === 'image' ? (
         <>

@@ -3,6 +3,7 @@ import { newId } from '../db.js'
 import EntryPreview from './EntryPreview.jsx'
 import BlockEditor, { BLOCK_TYPES, ImagePicker } from './BlockEditor.jsx'
 import CoverOptions from './CoverOptions.jsx'
+import { useKnowledge } from '../knowledge.jsx'
 
 // Al pasar de «Editar» a «Vista previa» (y al revés) se recuerda qué bloque se estaba viendo,
 // para volver a ese mismo lugar y no al principio. Se mide en una línea al 35% de la pantalla.
@@ -28,6 +29,7 @@ const makeBlock = (type) => ({
   id: newId(), type, text: '', html: '', caption: '', image: null,
   ...(type === 'image' && { size: 'normal' }),
   ...(type === 'carousel' && { slides: [], size: 'normal', ratio: '16/9' }),
+  ...(type === 'table' && { collectionId: '', recordIds: [], columns: null, title: '', showImage: true, sort: null }),
 })
 
 // `role`: 'admin' guarda o publica directamente; 'member' guarda borradores y envía a revisión.
@@ -70,6 +72,7 @@ export default function EntryEditor({ entry, categories, saving, role = 'admin',
   })
 
   const isMember = role === 'member'
+  const knowledge = useKnowledge()
   const [rights, setRights] = useState(false)
   const [formError, setFormError] = useState('')
 
@@ -174,7 +177,7 @@ export default function EntryEditor({ entry, categories, saving, role = 'admin',
 
       <div className="add-blocks">
         <span>Añadir:</span>
-        {BLOCK_TYPES.filter((t) => !t.hidden).map((t) => (
+        {BLOCK_TYPES.filter((t) => !t.hidden && (!t.needsKnowledge || knowledge?.enabled)).map((t) => (
           <button type="button" key={t.type} className="ghost" onClick={() => setBlocks((bs) => [...bs, makeBlock(t.type)])}>
             + {t.label}
           </button>

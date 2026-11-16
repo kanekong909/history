@@ -80,6 +80,16 @@ Para que cualquier persona con cuenta pueda escribir historias que **tú aprueba
   y las apruebas o rechazas con una nota. Hasta entonces solo las ven su autora o autor y tú.
 - Nadie puede publicar por su cuenta, destacar historias ni cambiar una historia ya publicada.
 
+### Colecciones y fichas
+
+Una base de datos propia para tus historias (motores, aviones, personajes…). Ejecuta [`supabase/08_colecciones.sql`](supabase/08_colecciones.sql)
+en el **SQL Editor** (después del 02). Solo tú (administrador) creas colecciones y fichas; todos las leen.
+
+1. Menú de tu avatar → **Colecciones** → **Nueva colección**: pon el nombre y los campos que tendrá cada ficha (texto, número con unidad, año, selección, enlace web o enlace a otras fichas).
+2. Dentro de la colección, **+ Nueva ficha** para cargar cada una (nombre, imagen, resumen y sus campos).
+3. En una historia: bloque **Tabla de colección** (eliges colección, fichas, columnas y orden) y, en cualquier texto, escribe **@** para mencionar una ficha.
+   Al leer, la mención abre una tarjeta con lo esencial y lleva a la ficha, que lista las historias donde aparece.
+
 ## 3. Conectar la app
 
 1. En Supabase, abre **Project Settings → API** (o el botón **Connect**) y copia:
@@ -129,6 +139,7 @@ supabase/04_destacadas.sql           columna para marcar historias destacadas
 supabase/05_comentarios.sql          tabla de comentarios (con sesión o anónimos)
 supabase/06_editar_comentarios.sql   editar y borrar comentarios propios
 supabase/07_historias_de_usuarios.sql  historias de otras personas con aprobación
+supabase/08_colecciones.sql          colecciones y fichas (tablas y menciones con @)
 src/supabase.js          cliente de Supabase (lee el .env)
 src/db.js                leer/guardar/borrar entradas, subir imágenes, exportar/importar
 src/localDb.js           lee las entradas antiguas del navegador para migrarlas

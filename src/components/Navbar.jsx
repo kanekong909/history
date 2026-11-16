@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Logo from './Logo.jsx'
 
-function UserMenu({ user, profile, isAdmin, showMine, pendingCount, onMine, onReview, onExport, onImport, onLogout }) {
+function UserMenu({ user, profile, isAdmin, showMine, showCollections, pendingCount, onMine, onReview, onCollections, onExport, onImport, onLogout }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -47,6 +47,7 @@ function UserMenu({ user, profile, isAdmin, showMine, pendingCount, onMine, onRe
               <span>{isAdmin ? 'Administrador' : user.email}</span>
             </div>
           )}
+          {showCollections && <button type="button" role="menuitem" onClick={run(onCollections)}>Colecciones</button>}
           {showMine && <button type="button" role="menuitem" onClick={run(onMine)}>Mis historias</button>}
           {isAdmin && (
             <button type="button" role="menuitem" onClick={run(onReview)}>
@@ -66,7 +67,7 @@ function UserMenu({ user, profile, isAdmin, showMine, pendingCount, onMine, onRe
   )
 }
 
-export default function Navbar({ user, profile, isAdmin, canWrite, showMine, pendingCount, onHome, onNew, onMine, onReview, onLogin, onLogout, onExport, onImport }) {
+export default function Navbar({ user, profile, isAdmin, canWrite, showMine, showCollections, pendingCount, onHome, onNew, onMine, onReview, onCollections, onLogin, onLogout, onExport, onImport }) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -79,13 +80,14 @@ export default function Navbar({ user, profile, isAdmin, canWrite, showMine, pen
       </a>
 
       <nav className="nav-actions">
+        {showCollections && <button type="button" className="nav-link" onClick={onCollections}>Colecciones</button>}
         {canWrite && (
           <button type="button" className="new-btn" onClick={onNew}>
             <span aria-hidden="true">+</span> <span className="new-label">{isAdmin ? 'Nueva entrada' : 'Escribir historia'}</span>
           </button>
         )}
         {!user && <button type="button" onClick={onLogin}>Iniciar sesión</button>}
-        <UserMenu user={user} profile={profile} isAdmin={isAdmin} showMine={showMine} pendingCount={pendingCount} onMine={onMine} onReview={onReview} onExport={onExport} onImport={onImport} onLogout={onLogout} />
+        <UserMenu user={user} profile={profile} isAdmin={isAdmin} showMine={showMine} showCollections={showCollections} pendingCount={pendingCount} onMine={onMine} onReview={onReview} onCollections={onCollections} onExport={onExport} onImport={onImport} onLogout={onLogout} />
       </nav>
       </div>
     </header>

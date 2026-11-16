@@ -3614,3 +3614,126 @@ button.danger-solid {
 .form-error {
   margin: 10px 0 0;
 }
+/* =========================================================
+   Colecciones y fichas
+   ========================================================= */
+.nav-link { background: transparent; color: var(--text-soft); border: none; padding: 8px 12px; font-weight: 500; }
+.nav-link:hover { color: var(--accent); background: transparent; opacity: 1; }
+@media (max-width: 560px) { .nav-link { display: none; } }
+
+/* Menciones con @ (en el editor y al leer) */
+.prose .mention, .rte-content .mention, .mention.chip-link {
+  background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 0 .3em; font-weight: 500; cursor: pointer; white-space: nowrap;
+  transition: background .15s ease;
+}
+.prose .mention:hover, .mention.chip-link:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); opacity: 1; }
+.prose .mention.missing { background: transparent; color: var(--muted); cursor: default; text-decoration: underline dotted; }
+button.mention.chip-link { border: none; padding: 2px 10px; font: 500 .85rem var(--font-ui); border-radius: 6px; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.rte-hint { margin: 0; padding: 6px 14px 10px; font-size: .78rem; color: var(--muted); border-top: 1px solid var(--border); background: var(--surface-2); }
+.rte-hint kbd { font: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; }
+
+/* Buscador del @ */
+.mention-pop {
+  position: fixed; z-index: 300; width: 300px; max-height: 320px; overflow-y: auto; padding: 5px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-hover); font-family: var(--font-ui);
+}
+.mention-item { display: flex; align-items: center; gap: 10px; padding: 7px 9px; border-radius: 9px; cursor: pointer; }
+.mention-item.on { background: var(--accent-soft); }
+.mention-item.create { color: var(--accent); font-size: .9rem; }
+.mi-sq { flex: none; width: 30px; height: 30px; border-radius: 8px; overflow: hidden; display: grid; place-items: center; font: 600 .72rem var(--font-ui); background: var(--accent); color: #fff; }
+.mi-sq img { width: 100%; height: 100%; object-fit: cover; }
+.mi-plus { flex: none; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); font-size: 1.1rem; }
+.mi-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.mi-title { font-size: .92rem; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mi-sub { font-size: .74rem; color: var(--muted); }
+.mention-empty { padding: 12px; font-size: .88rem; color: var(--muted); }
+
+/* Tarjeta al pasar el cursor por una mención */
+.mention-card {
+  position: fixed; z-index: 250; width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  overflow: hidden; box-shadow: var(--shadow-hover); font-family: var(--font-ui); animation: mc-in .18s ease both;
+}
+@keyframes mc-in { from { opacity: 0; transform: translateY(6px); } }
+.mention-card > img { display: block; width: 100%; height: 130px; object-fit: cover; }
+.mc-body { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 6px; }
+.mc-body strong { font: 600 1.1rem/1.25 var(--font-display); }
+.mc-body p { margin: 0; font-size: .88rem; color: var(--text-soft); line-height: 1.45; }
+.mc-body dl { margin: 2px 0 0; display: grid; gap: 3px; }
+.mc-body dl div { display: flex; gap: 10px; font-size: .84rem; }
+.mc-body dt { color: var(--muted); min-width: 92px; }
+.mc-body dd { margin: 0; }
+.mc-body .link { align-self: flex-start; font-size: .88rem; margin-top: 4px; }
+
+/* Tablas de fichas */
+.rt-block { margin: 2.2em auto; }
+.content > .rt-block { max-width: 860px; }
+.rt-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.rt-head strong { font: 600 1.15rem var(--font-display); }
+.rt-head span { color: var(--muted); font-size: .85rem; }
+.rt-head .link { margin-left: auto; font-size: .85rem; }
+.rt-note { padding: 18px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 12px; font-size: .92rem; margin: 1.6em auto; }
+.rt-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+.rt { width: 100%; border-collapse: collapse; font: .92rem/1.4 var(--font-ui); }
+.rt th { text-align: left; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 0; border-bottom: 1px solid var(--border); background: var(--surface-2); white-space: nowrap; }
+.rt th:first-child { border-top-left-radius: 13px; }
+.rt-sort { all: unset; box-sizing: border-box; display: flex; gap: 6px; align-items: center; width: 100%; padding: 11px 14px; cursor: pointer; }
+.rt-sort:hover { color: var(--accent); }
+.rt-arrow { color: var(--accent); }
+.rt td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.rt tr:last-child td { border-bottom: none; }
+.rt tbody tr:hover td { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.rt-name { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; color: var(--accent); }
+.rt-name:hover { text-decoration: underline; }
+.content .rt-name img, .rt-name img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; flex: none; margin: 0; }
+.rt-ph { width: 40px; height: 40px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.muted { color: var(--muted); }
+
+@media (max-width: 640px) {
+  .rt-wrap { border: none; background: transparent; box-shadow: none; overflow: visible; }
+  .rt thead { display: none; }
+  .rt, .rt tbody, .rt tr, .rt td { display: block; width: 100%; }
+  .rt tr { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 12px; padding: 4px 0; box-shadow: var(--shadow); }
+  .rt td { border: none; padding: 6px 14px; display: flex; justify-content: space-between; gap: 14px; align-items: baseline; text-align: right; }
+  .rt td::before { content: attr(data-label); color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; text-align: left; flex: none; }
+  .rt td:first-child { padding-top: 10px; justify-content: flex-start; text-align: left; }
+  .rt td:first-child::before { display: none; }
+  .rt tbody tr:hover td { background: transparent; }
+}
+
+/* Páginas de colecciones y fichas */
+.collection-page, .record-page { max-width: 960px; margin: 0 auto; }
+.collection-head { margin: 8px 0 22px; }
+.collection-head h1, .record-title h1 { margin: 4px 0 8px; font: 600 clamp(1.9rem, 4.5vw, 2.8rem)/1.1 var(--font-display); letter-spacing: -.02em; }
+.collection-count { margin: 8px 0 0; color: var(--muted); font-size: .88rem; }
+.collection-search { margin: 0 0 16px; max-width: 420px; }
+.record-head { display: grid; grid-template-columns: minmax(0, 340px) 1fr; gap: 34px; align-items: center; margin: 10px 0 30px; }
+.record-head:not(:has(.record-img)) { grid-template-columns: 1fr; }
+.record-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); box-shadow: var(--shadow); }
+.record-summary { margin: 0; font: 1.12rem/1.6 var(--font-read); color: var(--text-soft); }
+.kicker-link { background: none; border: none; padding: 0; text-align: left; cursor: pointer; border-radius: 0; }
+.kicker-link:hover { text-decoration: underline; opacity: 1; }
+.record-fields { margin: 0 0 34px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.record-fields > div { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 16px; }
+.record-fields dt { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.record-fields dd { margin: 0; font-size: 1rem; line-height: 1.4; overflow-wrap: anywhere; }
+.record-mentions { margin: 0 0 30px; }
+.record-mentions h2 { font: 600 1.25rem var(--font-display); margin: 0 0 10px; }
+.record-mentions ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.record-mentions .link-plain { font-size: 1.02rem; }
+@media (max-width: 700px) { .record-head { grid-template-columns: 1fr; gap: 18px; } }
+
+/* Editores de colección y ficha */
+.field-row { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+.field-main { display: grid; grid-template-columns: 1fr 190px; gap: 8px; }
+.field-tools { display: flex; gap: 6px; justify-content: flex-end; }
+@media (max-width: 560px) { .field-main { grid-template-columns: 1fr; } }
+.relation-picker { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.relation-list { max-height: 190px; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; background: var(--surface); }
+.relation-list .check { margin: 4px 0; }
+.table-editor { display: flex; flex-direction: column; gap: 6px; }
+.te-group { border: 1px solid var(--border); border-radius: 12px; padding: 8px 14px 12px; margin: 8px 0 0; }
+.te-group legend { padding: 0 6px; font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.te-cols { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.check { cursor: pointer; }
+.rt a, .record-fields a, .rt-head a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }

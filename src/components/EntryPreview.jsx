@@ -11,7 +11,7 @@ import Block from './EntryBlocks.jsx'
 import BlockEditor from './BlockEditor.jsx'
 import EntryHeader from './EntryHeader.jsx'
 
-const LABELS = { text: 'Texto', image: 'Imagen', carousel: 'Carrusel', quote: 'Cita', heading: 'Subtítulo' }
+const LABELS = { text: 'Texto', image: 'Imagen', carousel: 'Carrusel', table: 'Tabla', quote: 'Cita', heading: 'Subtítulo' }
 
 // Parte visual del bloque (también se usa en la copia que sigue al dedo/ratón al arrastrar).
 const ItemView = forwardRef(function ItemView({ block, index, count, onEdit, onRemove, onMove, overlay, ...rest }, ref) {

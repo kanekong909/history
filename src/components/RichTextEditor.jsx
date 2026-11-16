@@ -5,6 +5,10 @@ import Link from '@tiptap/extension-link'
 import Highlight from '@tiptap/extension-highlight'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
+import { useRef, useState } from 'react'
+import { useKnowledge } from '../knowledge.jsx'
+import { createMention } from '../mentions.js'
+import QuickRecordModal from './QuickRecordModal.jsx'
 
 function Btn({ editor, action, isActive, title, children, disabled }) {
   return (
@@ -79,6 +83,14 @@ function Toolbar({ editor }) {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = 'Escribe aquí…' }) {
+  // «@»: menciona fichas de las colecciones. `ref` le da a la extensión lo más reciente sin recrear el editor.
+  const k = useKnowledge()
+  const [creating, setCreating] = useState(null) // ficha que se está creando al vuelo: { title, pos }
+  const ref = useRef(null)
+  ref.current = k && { ...k, onCreate: setCreating }
+  const mention = useRef(null)
+  if (!mention.current) mention.current = createMention(ref)
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3] } }),
@@ -87,6 +99,7 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Escribe
       Link.configure({ openOnClick: false, autolink: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({ placeholder }),
+      mention.current,
     ],
     content: value,
     onUpdate: ({ editor }) => onChange(editor.isEmpty ? '' : editor.getHTML()),
@@ -96,6 +109,17 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Escribe
     <div className="rte">
       <Toolbar editor={editor} />
       <EditorContent editor={editor} className="prose rte-content" />
+      {k?.enabled && <p className="rte-hint">Escribe <kbd>@</kbd> para mencionar una ficha de tus colecciones.</p>}
+      {creating && (
+        <QuickRecordModal
+          initialTitle={creating.title}
+          onCancel={() => setCreating(null)}
+          onCreated={(r) => {
+            editor.chain().focus().insertContentAt(creating.pos, [{ type: 'mention', attrs: { id: r.id, label: r.title } }, { type: 'text', text: ' ' }]).run()
+            setCreating(null)
+          }}
+        />
+      )}
     </div>
   )
 }
