@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { supabase, isConfigured } from './supabase.js'
 import {
   getAllEntries, saveEntry, deleteEntry, exportAll, importAll, uploadEntries,
@@ -52,6 +52,23 @@ const viewFromPath = () => {
   return m ? { mode: 'view', id: decodeURIComponent(m[1]) } : { mode: 'list' }
 }
 
+// Vuelve a una posición de la página. Las imágenes y las tablas terminan de cargar después y la página va creciendo,
+// así que se reintenta unas veces, salvo que la persona empiece a desplazarse por su cuenta.
+function restoreScroll(y) {
+  window.scrollTo(0, y)
+  if (y < 2) return
+  let touched = false
+  const stop = () => { touched = true }
+  for (const ev of ['wheel', 'touchstart', 'keydown']) window.addEventListener(ev, stop, { once: true, passive: true })
+  let tries = 0
+  const tick = () => {
+    if (touched || tries++ > 10 || Math.abs(window.scrollY - y) <= 2) return
+    window.scrollTo(0, y)
+    setTimeout(tick, 120)
+  }
+  setTimeout(tick, 90)
+}
+
 function Archive() {
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -73,6 +90,7 @@ function Archive() {
   // view: { mode: 'list' } | { mode: 'view', id } | { mode: 'edit', id? }
   // La entrada abierta va en la dirección (/historia/<id>) para poder compartirla y volver con «atrás».
   const [view, setViewState] = useState(viewFromPath)
+  const pendingScroll = useRef(null) // posición a la que ir cuando se pinte la nueva pantalla
   // `hero`: la imagen pulsada (viaja hasta la portada). `also`: algo más que cambiar en la misma transición.
   const setView = (v, hero, also) => {
     transition(() => {
@@ -82,10 +100,17 @@ function Archive() {
         view: v.id && entryPath(v.id), list: '/', mine: '/mis-historias', review: '/pendientes',
         collections: '/colecciones', collection: v.slug && `/coleccion/${encodeURIComponent(v.slug)}`, record: v.id && `/ficha/${encodeURIComponent(v.id)}`,
       }[v.mode] ?? null
-      if (path && location.pathname !== path) history.pushState(null, '', path)
-      window.scrollTo(0, 0)
+      if (path && location.pathname !== path) {
+        history.replaceState({ ...history.state, scrollY: window.scrollY }, '') // recuerda dónde estabas
+        history.pushState({ idx: (history.state?.idx ?? 0) + 1, scrollY: 0 }, '', path)
+      }
+      pendingScroll.current = 0 // una pantalla nueva empieza arriba
     }, hero)
   }
+
+  // ¿Hay una pantalla anterior dentro de la app? Entonces «Volver» usa el historial (y recupera la posición).
+  const canGoBack = (history.state?.idx ?? 0) > 0
+  const goBack = (fallback) => (canGoBack ? history.back() : setView(fallback))
   const importRef = useRef(null)
 
   const user = session?.user
@@ -108,10 +133,35 @@ function Archive() {
   }
 
   useEffect(() => {
-    const onPop = () => transition(() => { setViewState(viewFromPath()); window.scrollTo(0, 0) })
+    history.scrollRestoration = 'manual' // la posición la gestiona la app
+    if (history.state?.idx === undefined) history.replaceState({ ...history.state, idx: 0, scrollY: 0 }, '')
+
+    const onPop = (e) => transition(() => {
+      setViewState(viewFromPath())
+      pendingScroll.current = e.state?.scrollY ?? 0
+    })
+    // Va anotando el desplazamiento en la entrada actual del historial (con «adelante» también se recupera)
+    let t
+    const onScroll = () => {
+      clearTimeout(t)
+      t = setTimeout(() => history.replaceState({ ...history.state, scrollY: window.scrollY }, ''), 150)
+    }
     window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('popstate', onPop)
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [])
+
+  // Cuando la pantalla nueva ya está pintada, se va a la posición pendiente (arriba, o donde se estaba al volver)
+  useLayoutEffect(() => {
+    const y = pendingScroll.current
+    if (y == null) return
+    pendingScroll.current = null
+    restoreScroll(y)
+  }, [view])
 
   useEffect(() => {
     reload()
@@ -391,7 +441,8 @@ function Archive() {
             isFav={favs.has(current.id)}
             favCount={counts[current.id]}
             onToggleFav={() => toggleFav(current.id)}
-            onBack={() => setView(backFor(current))}
+            canGoBack={canGoBack}
+            onBack={() => goBack(backFor(current))}
             onEdit={() => setView({ mode: 'edit', id: current.id })}
             onDelete={() => handleDelete(current)}
             review={{
@@ -427,7 +478,9 @@ function Archive() {
           return !kLoaded ? loadingBox : !col ? notFound : (
             <CollectionPage
               collection={col} records={records} isAdmin={isAdmin}
-              onBack={() => setView({ mode: 'collections' })}
+              canGoBack={canGoBack}
+              onBack={() => goBack({ mode: 'collections' })}
+              onParent={() => setView({ mode: 'collections' })}
               onEditCollection={() => setView({ mode: 'collection-edit', slug: col.slug })}
               onNewRecord={() => setView({ mode: 'record-edit', collectionId: col.id })}
               onDeleteCollection={() => handleDeleteCollection(col)}
@@ -440,7 +493,8 @@ function Archive() {
           return !kLoaded || (loading && !rec) ? loadingBox : !rec || !col ? notFound : (
             <RecordPage
               record={rec} collection={col} entries={published} isAdmin={isAdmin}
-              onBack={() => setView({ mode: 'collection', slug: col.slug })}
+              canGoBack={canGoBack}
+              onBack={() => goBack({ mode: 'collection', slug: col.slug })}
               onOpenCollection={() => setView({ mode: 'collection', slug: col.slug })}
               onOpenEntry={(id) => setView({ mode: 'view', id })}
               onEdit={() => setView({ mode: 'record-edit', id: rec.id })}

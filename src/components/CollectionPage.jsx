@@ -5,7 +5,7 @@ import RecordTable from './RecordTable.jsx'
 import Icon from './Icon.jsx'
 
 // Página de una colección: todas sus fichas en una tabla que se busca y se ordena.
-export default function CollectionPage({ collection, records, isAdmin, onBack, onEditCollection, onNewRecord, onDeleteCollection }) {
+export default function CollectionPage({ collection, records, isAdmin, canGoBack, onBack, onParent, onEditCollection, onNewRecord, onDeleteCollection }) {
   const k = useKnowledge()
   const [q, setQ] = useState('')
   const mine = useMemo(() => records.filter((r) => r.collectionId === collection.id), [records, collection.id])
@@ -20,7 +20,10 @@ export default function CollectionPage({ collection, records, isAdmin, onBack, o
   return (
     <section className="collection-page">
       <div className="toolbar">
-        <button type="button" className="ghost" onClick={onBack}>← Colecciones</button>
+        <div className="actions">
+          {canGoBack && <button type="button" className="ghost" onClick={onBack}>← Volver</button>}
+          <button type="button" className="ghost" onClick={canGoBack ? onParent : onBack}>{canGoBack ? 'Colecciones' : '← Colecciones'}</button>
+        </div>
         {isAdmin && (
           <div className="actions">
             <button type="button" className="ghost" onClick={onEditCollection}>Editar campos</button>

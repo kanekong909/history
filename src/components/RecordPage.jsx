@@ -20,7 +20,7 @@ function Value({ field, value }) {
 }
 
 // Página de una ficha: su imagen, sus datos, y las historias donde se la menciona.
-export default function RecordPage({ record, collection, entries, isAdmin, onBack, onOpenCollection, onOpenEntry, onEdit, onDelete }) {
+export default function RecordPage({ record, collection, entries, isAdmin, canGoBack, onBack, onOpenCollection, onOpenEntry, onEdit, onDelete }) {
   const k = useKnowledge()
   const mentions = useMemo(() => mentionedIn(entries, record), [entries, record])
   const fields = collection.fields.filter((f) => !isEmpty(record.data?.[f.id]) && !(f.type === 'relation' && !asIds(record.data[f.id]).some((id) => k?.recordById.has(id))))
@@ -29,7 +29,10 @@ export default function RecordPage({ record, collection, entries, isAdmin, onBac
   return (
     <article className="record-page">
       <div className="toolbar">
-        <button type="button" className="ghost" onClick={onBack}>← {collection.name}</button>
+        <div className="actions">
+          {canGoBack && <button type="button" className="ghost" onClick={onBack}>← Volver</button>}
+          <button type="button" className="ghost" onClick={onOpenCollection}>{canGoBack ? collection.name : `← ${collection.name}`}</button>
+        </div>
         {isAdmin && (
           <div className="actions">
             <button type="button" className="ghost" onClick={onEdit}>Editar</button>
